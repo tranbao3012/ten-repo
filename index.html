@@ -1,0 +1,3260 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>Thư viện sách</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Thư viện">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<style>
+  :root {
+    --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-num: 'SF Mono', 'Roboto Mono', 'Courier New', monospace;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --nav-h: 60px;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px; --r-pill: 999px;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --t-fast: 0.15s var(--ease);
+    --t-med: 0.25s var(--ease);
+  }
+  html[data-theme="dark"] {
+    --bg: #0d1117; --bg-elevated: #131820; --bg-surface: #161c26;
+    --bg-hover: #1e2532; --bg-active: #232b3a;
+    --border: rgba(255,255,255,0.06); --border-strong: rgba(255,255,255,0.12);
+    --divider: rgba(255,255,255,0.05);
+    --text: #f0f2f7; --text-sec: #a8b0c2; --text-muted: #6b7488; --text-faint: #4a5162;
+    --accent: #d4af37; --accent-bright: #f0d27a; --accent-soft: rgba(212,175,55,0.12);
+    --success: #4ade80; --success-dim: #2e9152; --success-soft: rgba(74,222,128,0.12);
+    --danger: #f87171; --danger-soft: rgba(248,113,113,0.12);
+    --overlay: rgba(0,0,0,0.72);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
+    --shadow: 0 4px 16px rgba(0,0,0,0.35);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  html[data-theme="light"] {
+    --bg: #f6f4ef; --bg-elevated: #ffffff; --bg-surface: #ffffff;
+    --bg-hover: #f2efe7; --bg-active: #eae5d8;
+    --border: rgba(0,0,0,0.07); --border-strong: rgba(0,0,0,0.12);
+    --divider: rgba(0,0,0,0.06);
+    --text: #14171e; --text-sec: #4a5162; --text-muted: #8a8f9e; --text-faint: #b8bcc6;
+    --accent: #9b7a1f; --accent-bright: #b88e28; --accent-soft: rgba(155,122,31,0.10);
+    --success: #22a752; --success-dim: #1a7a3c; --success-soft: rgba(34,167,82,0.10);
+    --danger: #d63a3a; --danger-soft: rgba(214,58,58,0.10);
+    --overlay: rgba(20,23,30,0.5);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 4px 16px rgba(0,0,0,0.06);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+    min-height: 100vh; min-height: 100dvh;
+    padding-top: var(--safe-top);
+    overflow-x: hidden; overscroll-behavior-y: contain;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color var(--t-med), color var(--t-med);
+  }
+  button { font-family: inherit; font-size: inherit; color: inherit; border: none; background: none; cursor: pointer; }
+  input, textarea { font-family: inherit; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  #libStatus {
+    display: none; padding: 10px 16px; font-size: 12.5px; font-weight: 500;
+    text-align: center; background: var(--danger-soft); color: var(--danger);
+    border-bottom: 1px solid var(--danger); letter-spacing: 0.2px;
+  }
+  #libStatus.show { display: block; }
+  #libStatus.loading { background: var(--accent-soft); color: var(--accent-bright); border-bottom-color: var(--accent); }
+
+  .view { display: none; padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 24px); }
+  .view.active { display: block; animation: viewIn var(--t-med); }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  .lib-header {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-bottom: 1px solid var(--divider);
+    padding-top: var(--safe-top);
+  }
+  .lib-header-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px 8px; min-height: 52px;
+  }
+  .lib-title {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  }
+  .lib-title .title-main {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.4px;
+    color: var(--text); line-height: 1.15;
+  }
+  .lib-title .subtitle {
+    font-size: 12px; font-weight: 500; color: var(--text-muted);
+    letter-spacing: 0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .icon-btn {
+    height: 38px; min-width: 38px; padding: 0 10px;
+    border-radius: var(--r-sm);
+    background: transparent; color: var(--text-sec);
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px; transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+    flex-shrink: 0; border: 1px solid transparent;
+  }
+  .icon-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn.accent { color: var(--accent-bright); background: var(--accent-soft); }
+  .icon-btn.add-btn { font-size: 22px; font-weight: 300; padding: 0; line-height: 1; }
+  .icon-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .theme-toggle .icon-sun, .theme-toggle .icon-moon { display: none; }
+  html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+  html[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+  .search-row { display: none; padding: 0 14px 10px; }
+  .search-row.active { display: block; animation: searchIn 0.2s var(--ease); }
+  @keyframes searchIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .search-input-wrap { position: relative; display: flex; align-items: center; }
+  .search-input-wrap .s-icon {
+    position: absolute; left: 12px; width: 16px; height: 16px;
+    stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%; height: 40px;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    color: var(--text); font-size: 14px;
+    padding: 0 36px 0 38px; border-radius: var(--r-md);
+    outline: none; transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-clear {
+    position: absolute; right: 6px; width: 28px; height: 28px;
+    border-radius: 50%; color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--t-fast); font-size: 18px; line-height: 1;
+  }
+  .search-clear:hover { background: var(--bg-hover); color: var(--text); }
+
+  .goal-bar-wrap { padding: 0 14px 12px; }
+  .goal-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11.5px; font-weight: 500; color: var(--text-muted);
+    margin-bottom: 6px; letter-spacing: 0.1px;
+  }
+  .goal-info-row .hl { color: var(--accent-bright); font-weight: 700; font-family: var(--font-num); }
+  .goal-bar { height: 4px; background: var(--bg-hover); border-radius: var(--r-pill); overflow: hidden; }
+  .goal-bar-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+    border-radius: var(--r-pill);
+    transition: width 0.6s var(--ease), background 0.3s;
+  }
+  .goal-bar-fill.done { background: linear-gradient(90deg, var(--success-dim), var(--success)); }
+
+  .pull-hint {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: calc(var(--safe-top) + 24px) 20px 24px;
+    background: var(--bg-elevated); color: var(--text-sec);
+    text-align: center; font-size: 13px; font-weight: 600; letter-spacing: 0.2px;
+    transform: translateY(-100%);
+    transition: transform 0.25s var(--ease), color 0.2s;
+    z-index: 30; border-bottom: 1px solid var(--divider);
+    pointer-events: none; box-shadow: var(--shadow);
+  }
+  .pull-hint.show { transform: translateY(0); }
+  .pull-hint.armed { color: var(--success); }
+
+  .category-row {
+    display: flex; gap: 8px; padding: 12px 14px 4px;
+    overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .category-row::-webkit-scrollbar { display: none; }
+  .cat-chip {
+    flex-shrink: 0; padding: 7px 14px; border-radius: var(--r-pill);
+    background: var(--bg-hover); color: var(--text-sec);
+    font-size: 13px; font-weight: 600; letter-spacing: 0.1px;
+    cursor: pointer; transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+    white-space: nowrap; border: 1px solid transparent;
+  }
+  .cat-chip:active { transform: scale(0.96); }
+  .cat-chip.active {
+    background: var(--accent-soft); color: var(--accent-bright);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .cat-chip.add-chip { color: var(--text-muted); font-weight: 600; background: transparent; border: 1px dashed var(--border-strong); }
+
+  .book-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 20px 14px; padding: 16px 14px 24px;
+  }
+  .book-card { position: relative; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .book-card:active .book-cover { transform: scale(0.96); }
+  .book-cover {
+    width: 100%; aspect-ratio: 2/3;
+    background: var(--bg-surface); border-radius: var(--r-md);
+    overflow: hidden; box-shadow: var(--shadow);
+    position: relative; transition: transform var(--t-fast), box-shadow var(--t-fast);
+    border: 1px solid var(--border);
+  }
+  .book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .book-cover .cover-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px; text-align: center;
+    background: linear-gradient(160deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
+    position: relative; overflow: hidden;
+  }
+  .book-cover .cover-placeholder::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 30% 20%, var(--accent-soft) 0%, transparent 60%),
+      radial-gradient(circle at 70% 90%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .cover-placeholder .ph-type {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 3px 8px; border-radius: var(--r-sm);
+    background: var(--accent-soft); color: var(--accent-bright);
+    margin-bottom: 10px; position: relative; z-index: 1;
+  }
+  .cover-placeholder .ph-title {
+    font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-word; position: relative; z-index: 1;
+  }
+  .book-progress {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: rgba(0,0,0,0.4);
+  }
+  .book-progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+    transition: width 0.3s var(--ease);
+  }
+  .book-finished {
+    position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--success);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .book-finished::after {
+    content: ''; width: 8px; height: 4.5px;
+    border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(-1px, -1px);
+  }
+  .book-title {
+    margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--text);
+    line-height: 1.35; letter-spacing: -0.1px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-word;
+  }
+  .book-meta {
+    margin-top: 3px; font-size: 11px; font-weight: 500;
+    color: var(--text-muted); letter-spacing: 0.1px;
+  }
+  .empty-lib { text-align: center; padding: 80px 32px; color: var(--text-muted); }
+  .empty-lib .big {
+    font-size: 16px; color: var(--text-sec); font-weight: 700;
+    margin-bottom: 8px; letter-spacing: -0.2px;
+  }
+  .empty-lib .small { font-size: 13px; line-height: 1.7; font-weight: 400; }
+
+  .stats-section {
+    margin: 12px 14px; background: var(--bg-surface);
+    border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 18px; box-shadow: var(--shadow-sm);
+  }
+  .stats-section-title {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.6px;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .stats-section-title > :last-child:not(:first-child) {
+    font-weight: 500; letter-spacing: 0; text-transform: none;
+    color: var(--text-faint); font-size: 11.5px;
+  }
+  .big-timer { text-align: center; padding: 4px 0 8px; }
+  .big-timer .time {
+    font-family: var(--font-num); font-size: 40px; font-weight: 600;
+    color: var(--text); letter-spacing: -1.5px; line-height: 1;
+  }
+  .big-timer .lbl { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-top: 10px; }
+  .big-timer .goal-status {
+    display: inline-block; font-size: 12.5px; margin-top: 12px;
+    font-weight: 600; padding: 4px 12px; border-radius: var(--r-pill);
+  }
+  .big-timer .goal-status.done { color: var(--success); background: var(--success-soft); }
+  .big-timer .goal-status.pending { color: var(--accent-bright); background: var(--accent-soft); }
+  .goal-progress-bar {
+    height: 6px; background: var(--bg-hover); border-radius: var(--r-pill);
+    overflow: hidden; margin-top: 14px;
+  }
+  .goal-progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+    border-radius: var(--r-pill);
+    transition: width 0.6s var(--ease), background 0.3s;
+  }
+  .goal-progress-fill.done { background: linear-gradient(90deg, var(--success-dim), var(--success)); }
+  .today-book-list { display: flex; flex-direction: column; }
+  .today-book-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--divider); cursor: pointer;
+    transition: background var(--t-fast);
+  }
+  .today-book-item:last-child { border-bottom: none; }
+  .today-book-item:active { background: var(--bg-hover); border-radius: var(--r-sm); }
+  .today-book-cover {
+    width: 34px; height: 50px; border-radius: var(--r-sm);
+    background: var(--bg-elevated); overflow: hidden; flex-shrink: 0;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .today-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .today-book-cover .ph { font-size: 10px; font-weight: 700; color: var(--accent-bright); }
+  .today-book-info { flex: 1; min-width: 0; }
+  .today-book-name {
+    font-size: 13.5px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .today-book-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+  .today-book-time {
+    font-family: var(--font-num); font-size: 13px; font-weight: 600;
+    color: var(--accent-bright); flex-shrink: 0;
+  }
+  .empty-mini { text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 13px; }
+  .bar-chart {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    height: 130px; gap: 5px; padding-top: 8px;
+  }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+  .bar-track {
+    flex: 1; width: 100%; max-width: 26px; background: var(--bg-hover);
+    border-radius: 4px; display: flex; align-items: flex-end; overflow: hidden;
+  }
+  .bar-fill {
+    width: 100%; background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+    transition: height 0.5s var(--ease); border-radius: 3px 3px 0 0; min-height: 2px;
+  }
+  .bar-fill.today { background: linear-gradient(180deg, var(--success), var(--success-dim)); }
+  .bar-label { font-size: 10px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+  .bar-value {
+    font-size: 10px; color: var(--accent-bright); font-weight: 700;
+    white-space: nowrap; font-family: var(--font-num); min-height: 12px;
+  }
+  .alltime-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .alltime-item {
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 14px 12px; text-align: center;
+  }
+  .alltime-item .val {
+    font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.1;
+    font-family: var(--font-num); letter-spacing: -0.4px;
+  }
+  .alltime-item .lbl {
+    font-size: 10.5px; font-weight: 500; color: var(--text-muted);
+    margin-top: 6px; letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  .goal-input-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .goal-input-row input {
+    flex: 1; background: var(--bg-elevated); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--font-num); font-size: 16px;
+    font-weight: 700; padding: 12px 14px; border-radius: var(--r-sm);
+    outline: none; text-align: center;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  }
+  .goal-input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .goal-input-row .unit { font-size: 12.5px; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+  .goal-input-row button {
+    padding: 12px 18px; border-radius: var(--r-sm);
+    background: var(--accent); color: #14171e;
+    font-weight: 700; font-size: 13px; letter-spacing: 0.2px;
+    transition: transform var(--t-fast), background var(--t-fast);
+  }
+  .goal-input-row button:active { transform: scale(0.96); }
+
+  .bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid var(--divider);
+    display: flex; justify-content: space-around;
+    padding: 8px 12px calc(var(--safe-bottom) + 8px);
+    z-index: 50;
+  }
+  .nav-item {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 10px 6px; border-radius: var(--r-sm);
+    color: var(--text-muted); font-size: 12.5px; letter-spacing: 0.2px;
+    font-weight: 600; transition: color var(--t-fast), background var(--t-fast);
+    max-width: 140px;
+  }
+  .nav-item:hover { color: var(--text-sec); }
+  .nav-item.active { color: var(--accent-bright); background: var(--accent-soft); }
+
+  .reader {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 100; display: none; flex-direction: column;
+    padding-top: var(--safe-top);
+  }
+  .reader.active { display: flex; }
+  .reader-top {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-bottom: 1px solid var(--divider);
+    position: relative; z-index: 3;
+    transition: transform var(--t-med), opacity var(--t-med);
+    min-height: 56px;
+  }
+  .reader-bottom {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px calc(var(--safe-bottom) + 12px);
+    background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-top: 1px solid var(--divider);
+    position: relative; z-index: 3;
+    transition: transform var(--t-med), opacity var(--t-med);
+  }
+  .reader.focus .reader-top { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+  .reader.focus .reader-bottom { transform: translateY(100%); opacity: 0; pointer-events: none; }
+  .reader-title-wrap {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;
+  }
+  .reader-title {
+    font-size: 13.5px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    letter-spacing: -0.1px; line-height: 1.25;
+  }
+  .reader-chapter {
+    font-size: 10.5px; font-weight: 500; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.25; min-height: 13px;
+  }
+  .reader-timer {
+    font-family: var(--font-num); font-size: 12px; font-weight: 600;
+    color: var(--accent-bright); background: var(--accent-soft);
+    padding: 4px 9px; border-radius: var(--r-sm);
+    flex-shrink: 0; letter-spacing: 0.2px;
+  }
+  .reader-timer.hidden { display: none; }
+  .rd-icon {
+    height: 36px; min-width: 36px; padding: 0 10px;
+    border-radius: var(--r-sm); background: transparent; color: var(--text-sec);
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+    flex-shrink: 0;
+  }
+  .rd-icon:hover { background: var(--bg-hover); color: var(--text); }
+  .rd-icon:active { transform: scale(0.94); }
+  .rd-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .rd-icon.active { background: var(--accent-soft); color: var(--accent-bright); }
+
+  .reader-content {
+    flex: 1; position: relative; overflow: hidden;
+    background: var(--bg); touch-action: pan-y;
+  }
+  .reader-content.pdf-scroll {
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch; padding: 10px 0; touch-action: pan-y;
+  }
+  .reader-content canvas {
+    display: block; margin: 0 auto; max-width: 100%;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15); border-radius: 2px;
+  }
+
+  .rd-page-slider-wrap {
+    flex: 1; display: flex; flex-direction: column; gap: 6px;
+    min-width: 0; align-items: stretch;
+  }
+  .rd-page-label {
+    text-align: center; font-size: 12px;
+    color: var(--text-muted); font-weight: 600;
+    font-family: var(--font-num); letter-spacing: 0.3px;
+  }
+  .rd-page-label .cur { color: var(--accent-bright); font-weight: 700; }
+
+  .rd-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 20px; background: transparent;
+    outline: none; cursor: pointer; padding: 0; margin: 0;
+  }
+  .rd-slider::-webkit-slider-runnable-track {
+    width: 100%; height: 5px;
+    background: linear-gradient(
+      to right,
+      var(--accent) 0%,
+      var(--accent-bright) var(--slider-pct, 0%),
+      var(--bg-hover) var(--slider-pct, 0%),
+      var(--bg-hover) 100%
+    );
+    border-radius: var(--r-pill);
+    border: none;
+  }
+  .rd-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent-bright);
+    border: 2px solid var(--bg-elevated);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    margin-top: -8px;
+    cursor: grab;
+    transition: transform 0.1s;
+  }
+  .rd-slider:active::-webkit-slider-thumb { transform: scale(1.15); cursor: grabbing; }
+  .rd-slider::-moz-range-track {
+    width: 100%; height: 5px;
+    background: var(--bg-hover);
+    border-radius: var(--r-pill);
+    border: none;
+  }
+  .rd-slider::-moz-range-progress {
+    height: 5px;
+    background: linear-gradient(to right, var(--accent), var(--accent-bright));
+    border-radius: var(--r-pill);
+  }
+  .rd-slider::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent-bright);
+    border: 2px solid var(--bg-elevated);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    cursor: grab;
+  }
+  .rd-slider:disabled { opacity: 0.4; pointer-events: none; }
+
+  .overlay {
+    position: fixed; inset: 0; background: var(--overlay);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    z-index: 200; display: none; align-items: flex-end; justify-content: center;
+  }
+  .overlay.active { display: flex; }
+  .overlay.center { align-items: center; padding: 24px 16px; }
+  #confirmDialog.overlay { z-index: 400; }
+
+  .sheet {
+    background: var(--bg-elevated);
+    border-top-left-radius: var(--r-xl); border-top-right-radius: var(--r-xl);
+    padding: 12px 20px calc(var(--safe-bottom) + 20px);
+    width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto;
+    animation: sheetUp 0.3s var(--ease); color: var(--text);
+    box-shadow: var(--shadow-lg);
+  }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet-close {
+    display: block; width: 36px; height: 4px; background: var(--border-strong);
+    border-radius: var(--r-pill); margin: 0 auto 18px;
+  }
+  .sheet-title {
+    font-size: 16px; font-weight: 700; color: var(--text);
+    text-align: center; margin-bottom: 20px; letter-spacing: -0.2px;
+    padding: 0 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 12px; border-radius: var(--r-md);
+    font-size: 14.5px; font-weight: 500; color: var(--text);
+    cursor: pointer; transition: background var(--t-fast); letter-spacing: -0.1px;
+  }
+  .menu-item:hover { background: var(--bg-hover); }
+  .menu-item:active { background: var(--bg-active); }
+  .menu-item.danger { color: var(--danger); }
+  .menu-item .mi-body { flex: 1; min-width: 0; }
+  .menu-item .mi-body > :first-child {
+    font-weight: 600; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .menu-item .mi-sub {
+    display: block; font-size: 12px; color: var(--text-muted);
+    font-weight: 400; margin-top: 3px; line-height: 1.4;
+  }
+  .form-input {
+    width: 100%; background: var(--bg-surface); border: 1px solid var(--border);
+    color: var(--text); font-size: 15px; padding: 13px 16px;
+    border-radius: var(--r-md); outline: none;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .form-input::placeholder { color: var(--text-muted); font-style: italic; }
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+  .btn {
+    flex: 1; padding: 13px 12px; border-radius: var(--r-md);
+    font-size: 14px; font-weight: 600; letter-spacing: 0.1px;
+    cursor: pointer; background: var(--bg-hover); color: var(--text-sec);
+    transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+    border: 1px solid transparent;
+  }
+  .btn:hover { background: var(--bg-active); color: var(--text); }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #14171e; font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-bright); color: #14171e; }
+  .btn-danger { color: var(--danger); background: var(--danger-soft); }
+  .btn-danger:hover { background: color-mix(in srgb, var(--danger) 20%, transparent); }
+  .confirm-box {
+    background: var(--bg-elevated); border: 1px solid var(--border-strong);
+    border-radius: var(--r-xl); padding: 24px; max-width: 360px; width: 100%;
+    box-shadow: var(--shadow-lg); animation: popIn 0.22s var(--ease);
+  }
+  .confirm-box p {
+    font-size: 14px; color: var(--text); line-height: 1.7;
+    white-space: pre-line; text-align: center; margin-bottom: 4px;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .rm-section { margin-bottom: 18px; }
+  .rm-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .rm-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 14px; background: var(--bg-surface);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    margin-bottom: 8px; gap: 12px; font-size: 14px; font-weight: 500;
+  }
+  .rm-row .val { font-size: 13.5px; font-weight: 700; color: var(--accent-bright); font-family: var(--font-num); }
+  .rm-btn-group { display: flex; gap: 6px; align-items: center; }
+  .rm-mini-btn {
+    height: 34px; min-width: 34px; padding: 0 12px;
+    border-radius: var(--r-sm); background: var(--bg-elevated);
+    border: 1px solid var(--border); color: var(--text-sec);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+  }
+  .rm-mini-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .rm-mini-btn.active {
+    background: var(--accent-soft); color: var(--accent-bright);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .scan-list { max-height: 55vh; overflow-y: auto; margin: 0 -6px; }
+  .scan-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 8px; border-bottom: 1px solid var(--divider);
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+    transition: background var(--t-fast);
+  }
+  .scan-item:last-child { border-bottom: none; }
+  .scan-item:active { background: var(--bg-hover); }
+  .scan-item input[type="checkbox"] {
+    width: 22px; height: 22px; min-width: 22px;
+    accent-color: var(--accent); cursor: pointer; margin: 0;
+  }
+  .scan-info { flex: 1; min-width: 0; }
+  .scan-name {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .scan-meta {
+    font-size: 11.5px; color: var(--text-muted); margin-top: 3px;
+    display: flex; gap: 10px; align-items: center; font-weight: 500;
+  }
+  .scan-badge {
+    font-size: 10px; padding: 3px 8px; border-radius: var(--r-sm);
+    background: var(--accent-soft); color: var(--accent-bright);
+    font-weight: 700; flex-shrink: 0; letter-spacing: 0.3px;
+  }
+  .scan-badge.pdf { background: var(--danger-soft); color: var(--danger); }
+  .scan-badge.dup { background: var(--bg-hover); color: var(--text-muted); }
+  .toast {
+    position: fixed; left: 50%;
+    bottom: calc(var(--safe-bottom) + var(--nav-h) + 24px);
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-elevated); border: 1px solid var(--border-strong);
+    color: var(--text); font-size: 13.5px; font-weight: 500;
+    padding: 12px 20px; border-radius: var(--r-pill);
+    z-index: 500; opacity: 0; pointer-events: none;
+    transition: all 0.3s var(--ease);
+    max-width: calc(100vw - 40px); text-align: center;
+    box-shadow: var(--shadow-lg); letter-spacing: -0.1px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  body.reader-open .toast { bottom: calc(var(--safe-bottom) + 84px); }
+
+  .loading-overlay {
+    position: fixed; inset: 0; background: var(--overlay);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; z-index: 600;
+  }
+  .loading-overlay.active { display: flex; }
+  .loading-box {
+    background: var(--bg-elevated); border: 1px solid var(--border-strong);
+    border-radius: var(--r-lg); padding: 28px 32px; text-align: center;
+    max-width: 300px; color: var(--text); box-shadow: var(--shadow-lg);
+    animation: popIn 0.22s var(--ease);
+  }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border-strong);
+    border-top-color: var(--accent-bright); border-radius: 50%;
+    animation: spin 0.85s linear infinite; margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13.5px; color: var(--text-sec); font-weight: 500; }
+  #fileInput { display: none; }
+
+  .toc-list { max-height: 58vh; overflow-y: auto; margin: 0 -6px 6px; padding: 2px 0; }
+  .toc-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; border-radius: var(--r-sm);
+    cursor: pointer; color: var(--text);
+    font-size: 14px; line-height: 1.45;
+    transition: background var(--t-fast); word-break: break-word;
+  }
+  .toc-item:hover { background: var(--bg-hover); }
+  .toc-item:active { background: var(--bg-active); }
+  .toc-item.active {
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    font-weight: 600;
+  }
+  .toc-item .toc-num {
+    color: var(--text-muted); font-family: var(--font-num);
+    font-size: 12px; font-weight: 600; padding-top: 1px;
+    min-width: 22px; flex-shrink: 0;
+  }
+  .toc-item .toc-label { flex: 1; min-width: 0; }
+  .toc-item.sub { padding-left: 40px; font-size: 13px; color: var(--text-sec); }
+  .toc-item.sub .toc-num { display: none; }
+  .toc-item.sub.sub2 { padding-left: 60px; font-size: 12.5px; }
+  .toc-item.sub.sub2 .toc-label { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div id="libStatus"></div>
+<div class="pull-hint" id="pullHint">Kéo xuống để quét sách trong máy</div>
+
+<div id="view-library" class="view active">
+  <div class="lib-header">
+    <div class="lib-header-row">
+      <div class="lib-title">
+        <div class="title-main">Thư viện</div>
+        <span class="subtitle" id="libStats">0 sách</span>
+      </div>
+      <button class="icon-btn theme-toggle" id="themeToggle" type="button" title="Đổi giao diện">
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="icon-btn" id="sortBtn" type="button" title="Sắp xếp &amp; Lọc">
+        <svg viewBox="0 0 24 24"><path d="M3 6h11M3 12h8M3 18h5M18 6v12M15 15l3 3 3-3"/></svg>
+      </button>
+      <button class="icon-btn" id="searchBtn" type="button" title="Tìm kiếm">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+      <button class="icon-btn" id="categoryManagerBtn" type="button" title="Danh mục">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+      </button>
+      <button class="icon-btn accent add-btn" id="addBookBtn" type="button" title="Thêm sách">+</button>
+    </div>
+    <div class="search-row" id="searchRow">
+      <div class="search-input-wrap">
+        <svg class="s-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="Tìm theo tên sách..." autocomplete="off">
+        <button class="search-clear" id="searchClear" type="button" title="Xóa">×</button>
+      </div>
+    </div>
+    <div class="goal-bar-wrap">
+      <div class="goal-info-row">
+        <span>Mục tiêu hôm nay</span>
+        <span id="goalBarLabel"><span class="hl">0</span> / 30 phút</span>
+      </div>
+      <div class="goal-bar">
+        <div class="goal-bar-fill" id="goalBarFill"></div>
+      </div>
+    </div>
+  </div>
+  <div class="category-row" id="categoryRow"></div>
+  <div class="book-grid" id="bookGrid"></div>
+  <input type="file" id="fileInput" accept=".epub,.pdf,application/epub+zip,application/pdf" multiple>
+</div>
+
+<div id="view-stats" class="view">
+  <div class="lib-header">
+    <div class="lib-header-row">
+      <div class="lib-title">
+        <div class="title-main">Thống kê</div>
+        <span class="subtitle">Hoạt động đọc sách</span>
+      </div>
+      <button class="icon-btn theme-toggle" id="themeToggle2" type="button" title="Đổi giao diện">
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <div class="stats-section-title">
+      <span>Hôm nay</span>
+      <span id="statsDate"></span>
+    </div>
+    <div class="big-timer">
+      <div class="time" id="todayTime">00:00</div>
+      <div class="lbl">Thời gian đọc hôm nay</div>
+      <div class="goal-status pending" id="todayGoalStatus">Chưa đạt mục tiêu</div>
+    </div>
+    <div class="goal-progress-bar">
+      <div class="goal-progress-fill" id="todayGoalFill"></div>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <div class="stats-section-title">Sách đã đọc hôm nay</div>
+    <div class="today-book-list" id="todayBookList"></div>
+  </div>
+
+  <div class="stats-section">
+    <div class="stats-section-title">7 ngày gần nhất</div>
+    <div class="bar-chart" id="barChart7"></div>
+  </div>
+
+  <div class="stats-section">
+    <div class="stats-section-title">Tổng cộng</div>
+    <div class="alltime-grid">
+      <div class="alltime-item">
+        <div class="val" id="allTotalTime">0</div>
+        <div class="lbl">Tổng thời gian</div>
+      </div>
+      <div class="alltime-item">
+        <div class="val" id="allReading">0</div>
+        <div class="lbl">Sách đang đọc</div>
+      </div>
+      <div class="alltime-item">
+        <div class="val" id="allFinished">0</div>
+        <div class="lbl">Sách đã đọc</div>
+      </div>
+      <div class="alltime-item">
+        <div class="val" id="allStreak">0</div>
+        <div class="lbl">Chuỗi ngày đọc</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <div class="stats-section-title">Mục tiêu đọc hàng ngày</div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.6;font-weight:500;">
+      Đặt mục tiêu thời gian đọc mỗi ngày. Tiến độ sẽ hiển thị trên thanh header thư viện.
+    </div>
+    <div class="goal-input-row">
+      <input type="number" id="goalInput" min="1" max="1440" step="5" value="30">
+      <span class="unit">phút/ngày</span>
+      <button type="button" id="goalSaveBtn">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-item active" data-view="library" type="button">Thư viện</button>
+  <button class="nav-item" data-view="stats" type="button">Thống kê</button>
+</div>
+
+<div class="reader" id="reader">
+  <div class="reader-top">
+    <button class="rd-icon" id="readerBack" type="button" title="Quay lại">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="reader-title-wrap">
+      <div class="reader-title" id="readerTitle">...</div>
+      <div class="reader-chapter" id="readerChapter"></div>
+    </div>
+    <div class="reader-timer" id="readerTimer">00:00</div>
+    <button class="rd-icon" id="readerTtsBtn" type="button" title="Đọc văn bản" style="display:none;">
+      <svg id="ttsPlayIcon" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z" fill="currentColor" stroke="none"/></svg>
+      <svg id="ttsPauseIcon" viewBox="0 0 24 24" style="display:none;"><rect x="6" y="5" width="4" height="14" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="rd-icon" id="readerTocBtn" type="button" title="Mục lục">
+      <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="rd-icon" id="readerMenuBtn" type="button" title="Tùy chọn">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+  <div class="reader-content" id="readerContent"></div>
+
+  <div class="reader-bottom">
+    <div class="rd-page-slider-wrap">
+      <div class="rd-page-label" id="readerPageLabel">
+        <span class="cur">1</span> / <span class="total">1</span>
+      </div>
+      <input type="range" class="rd-slider" id="readerSlider" min="0" max="0" value="0" step="1" disabled>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="bookMenuSheet">
+  <div class="sheet">
+    <div class="sheet-close"></div>
+    <div class="sheet-title" id="bookMenuTitle">Tùy chọn sách</div>
+    <div id="bookMenuList"></div>
+    <div class="btn-row">
+      <button class="btn" id="bookMenuCancel" type="button">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="categorySheet">
+  <div class="sheet">
+    <div class="sheet-close"></div>
+    <div class="sheet-title" id="categorySheetTitle">Danh mục</div>
+    <div id="categoryList"></div>
+    <div class="btn-row">
+      <button class="btn" id="categoryAddBtn" type="button">Thêm danh mục</button>
+      <button class="btn" id="categoryClose" type="button">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="readerMenuSheet">
+  <div class="sheet">
+    <div class="sheet-close"></div>
+    <div class="sheet-title" id="readerMenuTitle">Tùy chọn đọc</div>
+    <div id="readerMenuContent"></div>
+    <div class="btn-row">
+      <button class="btn" id="readerMenuClose" type="button">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="tocSheet">
+  <div class="sheet">
+    <div class="sheet-close"></div>
+    <div class="sheet-title" id="tocTitle">Mục lục</div>
+    <div class="toc-list" id="tocList"></div>
+    <div class="btn-row">
+      <button class="btn" id="tocClose" type="button">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="sortSheet">
+  <div class="sheet">
+    <div class="sheet-close"></div>
+    <div class="sheet-title">Sắp xếp &amp; Lọc</div>
+    <div class="rm-section">
+      <div class="rm-label">Sắp xếp theo</div>
+      <div id="sortOptions"></div>
+    </div>
+    <div class="rm-section">
+      <div class="rm-label">Lọc sách</div>
+      <div id="filterOptions"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="sortClose" type="button">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="promptSheet">
+  <div class="sheet">
+    <div class="sheet-close"></div>
+    <div class="sheet-title" id="promptTitle">Nhập</div>
+    <input type="text" class="form-input" id="promptInput" placeholder="Nhập..." maxlength="60" autocomplete="off">
+    <div class="btn-row">
+      <button class="btn" id="promptCancel" type="button">Hủy</button>
+      <button class="btn btn-primary" id="promptOk" type="button">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="scanSheet">
+  <div class="sheet">
+    <div class="sheet-close"></div>
+    <div class="sheet-title" id="scanTitle">Sách tìm thấy</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px 14px;border-bottom:1px solid var(--divider);margin-bottom:4px;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:var(--text-sec);user-select:none;font-weight:600;">
+        <input type="checkbox" id="scanSelectAll" style="width:20px;height:20px;accent-color:var(--accent);">
+        Chọn tất cả
+      </label>
+      <span id="scanCount" style="font-size:12.5px;color:var(--text-muted);font-weight:600;font-family:var(--font-num);">0/0</span>
+    </div>
+    <div class="scan-list" id="scanList"></div>
+    <div class="btn-row">
+      <button class="btn" id="scanCancel" type="button">Hủy</button>
+      <button class="btn btn-primary" id="scanImport" type="button">Import</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay center" id="confirmDialog">
+  <div class="confirm-box">
+    <p id="confirmMsg">Bạn chắc chắn?</p>
+    <div class="btn-row">
+      <button class="btn" id="confirmNo" type="button">Không</button>
+      <button class="btn btn-danger" id="confirmYes" type="button">Có</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Đang xử lý...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+function showStatus(msg, isError) {
+  try {
+    var el = document.getElementById('libStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    el.classList.toggle('loading', !isError);
+  } catch(e) {}
+}
+function hideStatus() {
+  try {
+    var el = document.getElementById('libStatus');
+    if (el) el.classList.remove('show');
+  } catch(e) {}
+}
+window.addEventListener('error', function(ev){
+  console.error('[Global error]', ev.message, ev.filename, ev.lineno);
+});
+window.addEventListener('unhandledrejection', function(ev){
+  console.error('[Unhandled promise]', ev.reason);
+});
+
+function $(id) { return document.getElementById(id); }
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function dateToKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function escapeHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+function formatDuration(ms) {
+  if (!ms || ms < 1000) return '0 phút';
+  var totalMin = Math.floor(ms / 60000);
+  if (totalMin < 1) return '< 1 phút';
+  if (totalMin < 60) return totalMin + ' phút';
+  var h = Math.floor(totalMin / 60);
+  var m = totalMin % 60;
+  return h + 'g' + (m > 0 ? ' ' + m + 'p' : '');
+}
+function formatClock(ms) {
+  var sec = Math.max(0, Math.floor(ms / 1000));
+  var h = Math.floor(sec / 3600);
+  var m = Math.floor((sec % 3600) / 60);
+  var s = sec % 60;
+  if (h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function formatMinutes(ms) { return Math.floor(ms / 60000); }
+function formatBytes(bytes) {
+  if (!bytes) return '0B';
+  var kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(0) + 'KB';
+  var mb = kb / 1024;
+  if (mb < 1024) return mb.toFixed(1) + 'MB';
+  return (mb / 1024).toFixed(2) + 'GB';
+}
+function uid(prefix) {
+  return (prefix || 'id') + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+function loadScript(src) {
+  return new Promise(function(resolve, reject){
+    var s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ reject(new Error('Failed: ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+function normalizeVN(s) {
+  if (s == null) return '';
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+}
+
+var STATE_KEY = 'book_library_v2';
+var DB_NAME = 'winter_arc_books';
+var DB_VERSION = 1;
+var COVER_MAX_W = 240;
+var COVER_MAX_H = 360;
+
+var state = {
+  version: 2,
+  categories: [],
+  books: [],
+  settings: { theme: 'dark', fontSize: 100, fontFamily: 'serif', timerVisible: true, dailyGoalMin: 30 },
+  readingStats: {},
+  dailyBookStats: {},
+  openDates: {},
+  activeCategory: 'all',
+  activeView: 'library',
+  sortBy: 'recent',
+  filterBy: 'all'
+};
+var db = null;
+var libsReady = false;
+var searchQuery = '';
+
+var currentBook = null;
+var epubBook = null;
+var rendition = null;
+var pdfDoc = null;
+var pdfPageNum = 1;
+var pdfTotalPages = 0;
+var sessionTimerId = null;
+var sessionStartMs = 0;
+var epubLocationsReady = false;
+var epubTotalLocations = 0;
+var epubCurrentLocation = 0;
+
+var ttsState = {
+  isSpeaking: false,
+  isPaused: false,
+  queue: [],
+  currentIndex: 0,
+  currentUtterance: null,
+  voice: null,
+  awaitingPage: false
+};
+
+function saveState() {
+  try {
+    var cleanBooks = state.books.map(function(b){
+      return {
+        id: b.id, name: b.name, type: b.type, size: b.size,
+        addedAt: b.addedAt, categoryId: b.categoryId,
+        cover: b.cover, lastRead: b.lastRead, lastLocation: b.lastLocation,
+        totalReadingMs: b.totalReadingMs || 0,
+        finished: !!b.finished, progress: b.progress || 0,
+        sessionStart: b.sessionStart || null,
+        sourcePath: b.sourcePath || ''
+      };
+    });
+    localStorage.setItem(STATE_KEY, JSON.stringify({
+      version: 2,
+      categories: state.categories,
+      books: cleanBooks,
+      settings: state.settings,
+      readingStats: state.readingStats,
+      dailyBookStats: state.dailyBookStats,
+      openDates: state.openDates,
+      activeCategory: state.activeCategory,
+      activeView: state.activeView,
+      sortBy: state.sortBy,
+      filterBy: state.filterBy
+    }));
+  } catch(e) { console.warn('saveState failed', e); }
+}
+function loadState() {
+  try {
+    var raw = localStorage.getItem(STATE_KEY);
+    if (!raw) {
+      var oldRaw = localStorage.getItem('book_library_v1');
+      if (oldRaw) raw = oldRaw;
+    }
+    if (!raw) return;
+    var p = JSON.parse(raw);
+    if (p.categories && Array.isArray(p.categories)) state.categories = p.categories;
+    if (p.books && Array.isArray(p.books)) state.books = p.books;
+    if (p.settings) Object.assign(state.settings, p.settings);
+    if (p.readingStats) state.readingStats = p.readingStats;
+    if (p.dailyBookStats) state.dailyBookStats = p.dailyBookStats;
+    else state.dailyBookStats = {};
+    if (p.activeCategory) state.activeCategory = p.activeCategory;
+    if (p.activeView) state.activeView = p.activeView;
+    if (p.sortBy) state.sortBy = p.sortBy;
+    if (p.filterBy) state.filterBy = p.filterBy;
+    if (!state.settings.dailyGoalMin) state.settings.dailyGoalMin = 30;
+    if (!state.settings.fontFamily) state.settings.fontFamily = 'serif';
+    if (p.openDates) {
+      state.openDates = p.openDates;
+    } else {
+      state.openDates = {};
+      Object.keys(state.readingStats || {}).forEach(function(k){
+        if ((state.readingStats[k] || 0) > 0) state.openDates[k] = true;
+      });
+    }
+  } catch(e) { console.warn('loadState failed', e); }
+}
+function recoverAbandonedSessions() {
+  var changed = false;
+  var now = Date.now();
+  state.books.forEach(function(b){
+    if (b.sessionStart) {
+      var elapsed = now - b.sessionStart;
+      if (elapsed > 1000 && elapsed < 6 * 3600 * 1000) {
+        b.totalReadingMs = (b.totalReadingMs || 0) + elapsed;
+        var d = new Date(b.sessionStart);
+        var key = dateToKey(d);
+        state.readingStats[key] = (state.readingStats[key] || 0) + elapsed;
+        if (!state.dailyBookStats[key]) state.dailyBookStats[key] = {};
+        state.dailyBookStats[key][b.id] = (state.dailyBookStats[key][b.id] || 0) + elapsed;
+      }
+      b.sessionStart = null;
+      changed = true;
+    }
+  });
+  if (changed) saveState();
+}
+function recordSessionTime(bookId, ms) {
+  if (!bookId || ms < 1000) return;
+  var book = state.books.find(function(b){ return b.id === bookId; });
+  if (book) book.totalReadingMs = (book.totalReadingMs || 0) + ms;
+  var today = todayStr();
+  state.readingStats[today] = (state.readingStats[today] || 0) + ms;
+  if (!state.dailyBookStats[today]) state.dailyBookStats[today] = {};
+  state.dailyBookStats[today][bookId] = (state.dailyBookStats[today][bookId] || 0) + ms;
+}
+
+function openDB() {
+  return new Promise(function(resolve, reject){
+    if (!window.indexedDB) return reject(new Error('IndexedDB không hỗ trợ'));
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(e){
+      var d = e.target.result;
+      if (!d.objectStoreNames.contains('files')) d.createObjectStore('files', { keyPath: 'id' });
+    };
+    req.onsuccess = function(){ db = req.result; resolve(db); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+function putFile(id, blob) {
+  return new Promise(function(resolve, reject){
+    var tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').put({ id: id, blob: blob });
+    tx.oncomplete = function(){ resolve(); };
+    tx.onerror = function(){ reject(tx.error); };
+  });
+}
+function getFile(id) {
+  return new Promise(function(resolve, reject){
+    var tx = db.transaction('files', 'readonly');
+    var req = tx.objectStore('files').get(id);
+    req.onsuccess = function(){ resolve(req.result ? req.result.blob : null); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+function deleteFile(id) {
+  return new Promise(function(resolve, reject){
+    var tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').delete(id);
+    tx.oncomplete = function(){ resolve(); };
+    tx.onerror = function(){ reject(tx.error); };
+  });
+}
+
+var toastTimer = null;
+function showToast(msg, ms) {
+  var t = $('toast'); if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, ms || 2200);
+}
+var confirmCb = null;
+function showConfirm(msg, cb) {
+  $('confirmMsg').textContent = msg;
+  confirmCb = cb || null;
+  $('confirmDialog').classList.add('active');
+}
+function hideConfirm() {
+  $('confirmDialog').classList.remove('active');
+  confirmCb = null;
+}
+var promptCb = null;
+function showPrompt(title, initial, cb) {
+  $('promptTitle').textContent = title;
+  $('promptInput').value = initial || '';
+  promptCb = cb || null;
+  $('promptSheet').classList.add('active');
+  setTimeout(function(){ try { $('promptInput').focus(); $('promptInput').select(); } catch(e){} }, 200);
+}
+function hidePrompt() {
+  $('promptSheet').classList.remove('active');
+  promptCb = null;
+}
+function showLoading(text) {
+  $('loadingText').textContent = text || 'Đang xử lý...';
+  $('loadingOverlay').classList.add('active');
+}
+function updateLoading(text) { $('loadingText').textContent = text; }
+function hideLoading() { $('loadingOverlay').classList.remove('active'); }
+function closeSheet(id) {
+  var el = $(id);
+  if (el) el.classList.remove('active');
+}
+
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.settings.theme);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = state.settings.theme === 'dark' ? '#0d1117' : '#f6f4ef';
+  if (rendition) {
+    try {
+      var contents = rendition.getContents();
+      contents.forEach(function(c) { applyCustomEpubCSS(c); });
+    } catch(e) {}
+  }
+}
+function toggleTheme() {
+  state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+  saveState();
+  applyTheme();
+}
+
+function switchView(view) {
+  state.activeView = view;
+  saveState();
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  var el = $('view-' + view);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(b){
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  if (view === 'stats') renderStatsView();
+  else renderLibrary();
+  window.scrollTo(0, 0);
+}
+
+function blobUrlToCover(url, maxW, maxH) {
+  return new Promise(function(resolve){
+    var img = new Image();
+    var done = false;
+    function finish(v){ if (!done) { done = true; resolve(v); } }
+    img.onload = function(){
+      try {
+        var ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        var w = Math.max(1, Math.round(img.width * ratio));
+        var h = Math.max(1, Math.round(img.height * ratio));
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        finish(c.toDataURL('image/jpeg', 0.78));
+      } catch(e) { finish(null); }
+    };
+    img.onerror = function(){ finish(null); };
+    setTimeout(function(){ finish(null); }, 8000);
+    img.src = url;
+  });
+}
+async function extractEpubCover(arrayBuffer) {
+  if (!window.ePub) return null;
+  try {
+    var buf = arrayBuffer.slice(0);
+    var book = window.ePub(buf);
+    await book.ready;
+    var coverUrl = null;
+    try { coverUrl = await book.coverUrl(); } catch(e) {}
+    var result = null;
+    if (coverUrl) {
+      result = await blobUrlToCover(coverUrl, COVER_MAX_W, COVER_MAX_H);
+      if (coverUrl.indexOf('blob:') === 0) URL.revokeObjectURL(coverUrl);
+    }
+    try { book.destroy(); } catch(e) {}
+    return result;
+  } catch(e) { return null; }
+}
+async function extractPdfCover(arrayBuffer) {
+  if (!window.pdfjsLib) return null;
+  try {
+    var buf = arrayBuffer.slice(0);
+    var pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+    var page = await pdf.getPage(1);
+    var vp1 = page.getViewport({ scale: 1 });
+    var scale = (COVER_MAX_W * 2) / vp1.width;
+    var vp = page.getViewport({ scale: scale });
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.round(vp.width);
+    canvas.height = Math.round(vp.height);
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+    try { pdf.destroy(); } catch(e) {}
+    return dataUrl;
+  } catch(e) { return null; }
+}
+
+async function createBookFromFile(file, sourcePath) {
+  var lower = (file.name || '').toLowerCase();
+  var type = null;
+  if (lower.slice(-5) === '.epub') type = 'epub';
+  else if (lower.slice(-4) === '.pdf') type = 'pdf';
+  else return null;
+
+  var arrayBuffer = await file.arrayBuffer();
+  var blob = new Blob([arrayBuffer], { type: type === 'epub' ? 'application/epub+zip' : 'application/pdf' });
+  var id = uid('b');
+
+  var cover = null;
+  try {
+    if (type === 'epub' && window.ePub) cover = await extractEpubCover(arrayBuffer);
+    else if (type === 'pdf' && window.pdfjsLib) cover = await extractPdfCover(arrayBuffer);
+  } catch(e) {}
+
+  await putFile(id, blob);
+
+  return {
+    id: id,
+    name: (file.name || 'Sách').replace(/\.(epub|pdf)$/i, ''),
+    type: type, size: file.size, addedAt: Date.now(),
+    categoryId: null, cover: cover,
+    lastRead: null, lastLocation: null,
+    totalReadingMs: 0, finished: false, progress: 0,
+    sessionStart: null, sourcePath: sourcePath || ''
+  };
+}
+function isDuplicate(fileName, fileSize, sourcePath) {
+  return state.books.some(function(b){
+    if (b.sourcePath && sourcePath && b.sourcePath === sourcePath) return true;
+    return b.name === fileName.replace(/\.(epub|pdf)$/i, '') && b.size === fileSize;
+  });
+}
+
+async function importFiles(files) {
+  showLoading('Đang xử lý...');
+  var imported = 0, failed = 0;
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    updateLoading('(' + (i+1) + '/' + files.length + ') ' + file.name);
+    try {
+      var book = await createBookFromFile(file, file.webkitRelativePath || '');
+      if (book) { state.books.push(book); imported++; }
+    } catch(err) { failed++; }
+  }
+  saveState();
+  renderLibrary();
+  hideLoading();
+  if (imported > 0 && failed === 0) showToast('Đã thêm ' + imported + ' sách');
+  else if (imported > 0) showToast('Đã thêm ' + imported + ', lỗi ' + failed);
+  else if (failed > 0) showToast('Không thêm được sách');
+}
+
+function triggerScan() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  try { input.webkitdirectory = true; } catch(e) {}
+  input.accept = '.epub,.pdf';
+  input.onchange = function(e){
+    var files = Array.prototype.slice.call(e.target.files || []);
+    if (files.length === 0) return;
+    var books = files.filter(function(f){
+      var n = f.name.toLowerCase();
+      return n.endsWith('.epub') || n.endsWith('.pdf');
+    });
+    if (books.length === 0) { showToast('Không tìm thấy sách EPUB/PDF trong thư mục'); return; }
+    showScanResults(books);
+  };
+  input.click();
+}
+function showScanResults(files) {
+  var list = $('scanList');
+  list.innerHTML = '';
+  $('scanTitle').textContent = 'Chọn sách để import';
+  var items = files.map(function(f){
+    var name = f.name.replace(/\.(epub|pdf)$/i, '');
+    var type = f.name.toLowerCase().slice(-4) === 'epub' ? 'epub' : 'pdf';
+    var dup = isDuplicate(f.name, f.size, f.webkitRelativePath || '');
+    return { file: f, name: name, type: type, dup: dup, checked: !dup, el: null };
+  });
+  items.forEach(function(it){
+    var row = document.createElement('label');
+    row.className = 'scan-item';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = it.checked; cb.disabled = it.dup;
+    if (it.dup) row.style.opacity = '0.5';
+    var info = document.createElement('div');
+    info.className = 'scan-info';
+    var nm = document.createElement('div');
+    nm.className = 'scan-name'; nm.textContent = it.name;
+    var meta = document.createElement('div');
+    meta.className = 'scan-meta';
+    meta.innerHTML = '<span>' + formatBytes(it.file.size) + '</span>' +
+      (it.dup ? '<span class="scan-badge dup">Đã có</span>' : '');
+    info.appendChild(nm); info.appendChild(meta);
+    var badge = document.createElement('div');
+    badge.className = 'scan-badge' + (it.type === 'pdf' ? ' pdf' : '');
+    badge.textContent = it.type.toUpperCase();
+    row.appendChild(cb); row.appendChild(info); row.appendChild(badge);
+    list.appendChild(row);
+    it.el = cb;
+    cb.addEventListener('change', function(){ updateScanCount(items); });
+  });
+  $('scanSelectAll').checked = items.every(function(it){ return it.checked || it.dup; });
+  $('scanSelectAll').onchange = function(){
+    var v = $('scanSelectAll').checked;
+    items.forEach(function(it){ if (!it.dup) { it.checked = v; it.el.checked = v; } });
+    updateScanCount(items);
+  };
+  updateScanCount(items);
+  $('scanImport').onclick = async function(){
+    var selected = items.filter(function(it){ return it.checked && !it.dup; });
+    if (selected.length === 0) { showToast('Chưa chọn sách nào'); return; }
+    closeSheet('scanSheet');
+    showLoading('Đang import...');
+    var ok = 0;
+    for (var i = 0; i < selected.length; i++) {
+      updateLoading('(' + (i+1) + '/' + selected.length + ') ' + selected[i].file.name);
+      try {
+        var book = await createBookFromFile(selected[i].file, selected[i].file.webkitRelativePath || '');
+        if (book) { state.books.push(book); ok++; }
+      } catch(e) {}
+    }
+    saveState();
+    renderLibrary();
+    hideLoading();
+    showToast('Đã import ' + ok + '/' + selected.length + ' sách');
+  };
+  $('scanSheet').classList.add('active');
+}
+function updateScanCount(items) {
+  var total = items.length;
+  var sel = items.filter(function(it){ return it.checked && !it.dup; }).length;
+  $('scanCount').textContent = sel + '/' + total;
+}
+
+function getFilteredBooks() {
+  var books = state.books.slice();
+  if (state.activeCategory !== 'all') {
+    books = books.filter(function(b){ return b.categoryId === state.activeCategory; });
+  }
+  if (state.filterBy && state.filterBy !== 'all') {
+    books = books.filter(function(b){
+      if (state.filterBy === 'reading') return (b.progress || 0) > 0 && !b.finished;
+      if (state.filterBy === 'finished') return !!b.finished;
+      if (state.filterBy === 'unread') return !b.progress && !b.finished;
+      return true;
+    });
+  }
+  if (searchQuery.trim()) {
+    var nq = normalizeVN(searchQuery.trim());
+    books = books.filter(function(b){ return normalizeVN(b.name).indexOf(nq) >= 0; });
+  }
+  var sort = state.sortBy || 'recent';
+  books.sort(function(a, b){
+    if (sort === 'name') return a.name.localeCompare(b.name, 'vi');
+    if (sort === 'added') return (b.addedAt || 0) - (a.addedAt || 0);
+    if (sort === 'progress') return (b.progress || 0) - (a.progress || 0);
+    if (sort === 'time') return (b.totalReadingMs || 0) - (a.totalReadingMs || 0);
+    return (b.lastRead || b.addedAt) - (a.lastRead || a.addedAt);
+  });
+  return books;
+}
+
+function updateLibHeader() {
+  var total = state.books.length;
+  var filtered = getFilteredBooks();
+  var sub;
+  if (searchQuery.trim() || state.activeCategory !== 'all' || state.filterBy !== 'all') {
+    sub = filtered.length + ' / ' + total + ' sách';
+  } else {
+    sub = total + ' sách';
+  }
+  var el = $('libStats');
+  if (el) el.textContent = sub;
+}
+
+function renderLibrary() {
+  updateLibHeader();
+  renderCategoryChips();
+  renderBookGrid();
+  renderGoalBar();
+}
+
+function renderGoalBar() {
+  var today = todayStr();
+  var todayMs = state.readingStats[today] || 0;
+  var goalMs = (state.settings.dailyGoalMin || 30) * 60000;
+  var pct = goalMs > 0 ? Math.min(100, (todayMs / goalMs) * 100) : 0;
+  var fill = $('goalBarFill');
+  var label = $('goalBarLabel');
+  if (fill) {
+    fill.style.width = pct + '%';
+    fill.classList.toggle('done', pct >= 100);
+  }
+  if (label) {
+    var cur = Math.floor(todayMs / 60000);
+    label.innerHTML = '<span class="hl">' + cur + '</span> / ' + (state.settings.dailyGoalMin || 30) + ' phút';
+  }
+}
+function renderCategoryChips() {
+  var row = $('categoryRow'); if (!row) return;
+  row.innerHTML = '';
+  var all = document.createElement('div');
+  all.className = 'cat-chip' + (state.activeCategory === 'all' ? ' active' : '');
+  all.textContent = 'Tất cả';
+  all.addEventListener('click', function(){
+    state.activeCategory = 'all'; saveState(); renderCategoryChips(); renderBookGrid(); updateLibHeader();
+  });
+  row.appendChild(all);
+  state.categories.forEach(function(cat){
+    var chip = document.createElement('div');
+    chip.className = 'cat-chip' + (state.activeCategory === cat.id ? ' active' : '');
+    chip.textContent = cat.name;
+    chip.addEventListener('click', function(){
+      state.activeCategory = cat.id; saveState(); renderCategoryChips(); renderBookGrid(); updateLibHeader();
+    });
+    row.appendChild(chip);
+  });
+  var add = document.createElement('div');
+  add.className = 'cat-chip add-chip';
+  add.textContent = '+ Danh mục';
+  add.addEventListener('click', addCategory);
+  row.appendChild(add);
+}
+function renderBookGrid() {
+  var grid = $('bookGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  var books = getFilteredBooks();
+  if (books.length === 0) {
+    var empty = document.createElement('div');
+    empty.className = 'empty-lib';
+    empty.style.gridColumn = '1 / -1';
+    if (searchQuery.trim()) {
+      empty.innerHTML = '<div class="big">Không tìm thấy sách</div><div class="small">Thử từ khóa khác hoặc xóa tìm kiếm</div>';
+    } else {
+      empty.innerHTML = '<div class="big">Thư viện trống</div><div class="small">Nhấn "+" để chọn file, hoặc kéo xuống để quét toàn bộ sách trong máy</div>';
+    }
+    grid.appendChild(empty);
+    return;
+  }
+  books.forEach(function(b){
+    var card = document.createElement('div');
+    card.className = 'book-card';
+    var cover = document.createElement('div');
+    cover.className = 'book-cover';
+    if (b.cover) {
+      var img = document.createElement('img');
+      img.src = b.cover; img.alt = b.name; img.loading = 'lazy';
+      cover.appendChild(img);
+    } else {
+      cover.innerHTML = '<div class="cover-placeholder">' +
+        '<div class="ph-type">' + b.type.toUpperCase() + '</div>' +
+        '<div class="ph-title">' + escapeHtml(b.name) + '</div></div>';
+    }
+    if (b.progress && b.progress > 0) {
+      var bar = document.createElement('div');
+      bar.className = 'book-progress';
+      var fill = document.createElement('div');
+      fill.className = 'book-progress-fill';
+      fill.style.width = Math.min(100, Math.round(b.progress * 100)) + '%';
+      bar.appendChild(fill);
+      cover.appendChild(bar);
+    }
+    if (b.finished) {
+      var f = document.createElement('div');
+      f.className = 'book-finished';
+      cover.appendChild(f);
+    }
+    card.appendChild(cover);
+    var title = document.createElement('div');
+    title.className = 'book-title'; title.textContent = b.name;
+    card.appendChild(title);
+    var meta = document.createElement('div');
+    meta.className = 'book-meta';
+    meta.textContent = Math.round((b.progress || 0) * 100) + '%';
+    card.appendChild(meta);
+
+    var pressTimer = null, longPressed = false;
+    function startPress() {
+      longPressed = false;
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = setTimeout(function(){
+        longPressed = true;
+        if (navigator.vibrate) try { navigator.vibrate(25); } catch(e){}
+        openBookMenu(b.id);
+      }, 500);
+    }
+    function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+    card.addEventListener('touchstart', startPress, { passive: true });
+    card.addEventListener('touchend', cancelPress);
+    card.addEventListener('touchmove', cancelPress, { passive: true });
+    card.addEventListener('touchcancel', cancelPress);
+    card.addEventListener('mousedown', startPress);
+    card.addEventListener('mouseup', cancelPress);
+    card.addEventListener('mouseleave', cancelPress);
+    card.addEventListener('contextmenu', function(e){ e.preventDefault(); cancelPress(); openBookMenu(b.id); });
+    card.addEventListener('click', function(e){
+      if (longPressed) { e.preventDefault(); e.stopPropagation(); return; }
+      openReaderForBook(b.id);
+    });
+    grid.appendChild(card);
+  });
+}
+
+function renderStatsView() {
+  var today = todayStr();
+  var todayMs = state.readingStats[today] || 0;
+  var goalMs = (state.settings.dailyGoalMin || 30) * 60000;
+  var pct = goalMs > 0 ? Math.min(100, (todayMs / goalMs) * 100) : 0;
+  var d = new Date();
+  var dateStr = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'][d.getDay()] +
+    ', ' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
+  var sd = $('statsDate'); if (sd) sd.textContent = dateStr;
+  $('todayTime').textContent = formatClock(todayMs);
+  var statusEl = $('todayGoalStatus');
+  if (todayMs >= goalMs) {
+    statusEl.textContent = 'Đã đạt mục tiêu hôm nay';
+    statusEl.className = 'goal-status done';
+  } else {
+    var remain = goalMs - todayMs;
+    statusEl.textContent = 'Còn ' + formatDuration(remain) + ' để đạt mục tiêu';
+    statusEl.className = 'goal-status pending';
+  }
+  var gf = $('todayGoalFill');
+  gf.style.width = pct + '%';
+  gf.classList.toggle('done', pct >= 100);
+
+  var todayList = $('todayBookList');
+  todayList.innerHTML = '';
+  var daily = state.dailyBookStats[today] || {};
+  var entries = [];
+  Object.keys(daily).forEach(function(bid){
+    var book = state.books.find(function(b){ return b.id === bid; });
+    if (book && daily[bid] > 0) entries.push({ book: book, ms: daily[bid] });
+  });
+  entries.sort(function(a, b){ return b.ms - a.ms; });
+  if (entries.length === 0) {
+    todayList.innerHTML = '<div class="empty-mini">Hôm nay chưa đọc sách nào</div>';
+  } else {
+    entries.forEach(function(en){
+      var item = document.createElement('div');
+      item.className = 'today-book-item';
+      var coverHtml = en.book.cover
+        ? '<img src="' + en.book.cover + '" alt="" />'
+        : '<span class="ph">' + en.book.type.toUpperCase() + '</span>';
+      var prog = Math.round((en.book.progress || 0) * 100);
+      item.innerHTML =
+        '<div class="today-book-cover">' + coverHtml + '</div>' +
+        '<div class="today-book-info">' +
+          '<div class="today-book-name">' + escapeHtml(en.book.name) + '</div>' +
+          '<div class="today-book-sub">' + en.book.type.toUpperCase() + ' · ' + prog + '%</div>' +
+        '</div>' +
+        '<div class="today-book-time">' + formatClock(en.ms) + '</div>';
+      item.addEventListener('click', function(){ openReaderForBook(en.book.id); });
+      todayList.appendChild(item);
+    });
+  }
+
+  var chart = $('barChart7');
+  chart.innerHTML = '';
+  var days = [];
+  var maxMs = 0;
+  for (var i = 6; i >= 0; i--) {
+    var dd = new Date();
+    dd.setDate(dd.getDate() - i);
+    var key = dateToKey(dd);
+    var ms = state.readingStats[key] || 0;
+    if (ms > maxMs) maxMs = ms;
+    days.push({ key: key, ms: ms, label: dd.getDate() + '/' + (dd.getMonth()+1), isToday: i === 0 });
+  }
+  if (maxMs === 0) maxMs = 1;
+  days.forEach(function(dy){
+    var col = document.createElement('div');
+    col.className = 'bar-col';
+    var val = document.createElement('div');
+    val.className = 'bar-value';
+    val.textContent = dy.ms > 0 ? formatMinutes(dy.ms) + 'p' : '';
+    var track = document.createElement('div');
+    track.className = 'bar-track';
+    var fill = document.createElement('div');
+    fill.className = 'bar-fill' + (dy.isToday ? ' today' : '');
+    fill.style.height = Math.max(2, (dy.ms / maxMs) * 100) + '%';
+    track.appendChild(fill);
+    var lbl = document.createElement('div');
+    lbl.className = 'bar-label'; lbl.textContent = dy.label;
+    col.appendChild(val); col.appendChild(track); col.appendChild(lbl);
+    chart.appendChild(col);
+  });
+
+  var allTime = 0;
+  Object.keys(state.readingStats).forEach(function(k){ allTime += state.readingStats[k]; });
+  $('allTotalTime').textContent = formatDuration(allTime);
+
+  var readingCount = 0, finishedCount = 0;
+  state.books.forEach(function(b){
+    if (b.finished) finishedCount++;
+    else if ((b.progress || 0) > 0) readingCount++;
+  });
+  $('allReading').textContent = readingCount;
+  $('allFinished').textContent = finishedCount;
+
+  var streak = 0;
+  var check = new Date();
+  var todayKey = dateToKey(check);
+  if (!state.openDates[todayKey]) {
+    check.setDate(check.getDate() - 1);
+  }
+  while (state.openDates[dateToKey(check)] && streak < 3650) {
+    streak++;
+    check.setDate(check.getDate() - 1);
+  }
+  $('allStreak').textContent = streak;
+
+  var gi = $('goalInput');
+  if (gi) gi.value = state.settings.dailyGoalMin || 30;
+}
+
+function makeMenuItem(label, sub, cb, danger) {
+  var el = document.createElement('div');
+  el.className = 'menu-item' + (danger ? ' danger' : '');
+  var html = '<div class="mi-body"><div>' + escapeHtml(label) + '</div>';
+  if (sub) html += '<span class="mi-sub" style="white-space:pre-line;">' + escapeHtml(sub) + '</span>';
+  html += '</div>';
+  el.innerHTML = html;
+  el.addEventListener('click', cb);
+  return el;
+}
+function openBookMenu(bookId) {
+  var book = state.books.find(function(b){ return b.id === bookId; });
+  if (!book) return;
+  $('bookMenuTitle').textContent = book.name;
+  var list = $('bookMenuList');
+  list.innerHTML = '';
+  list.appendChild(makeMenuItem('Chuyển vào danh mục', null, function(){
+    closeSheet('bookMenuSheet'); openMoveToCategory(book);
+  }));
+  list.appendChild(makeMenuItem(
+    book.finished ? 'Bỏ đánh dấu đã đọc' : 'Đánh dấu đã đọc', null,
+    function(){
+      book.finished = !book.finished;
+      if (book.finished) book.progress = 1;
+      saveState(); renderBookGrid(); closeSheet('bookMenuSheet');
+      showToast(book.finished ? 'Đã đánh dấu hoàn thành' : 'Đã bỏ đánh dấu');
+    }
+  ));
+  list.appendChild(makeMenuItem('Đặt lại tiến độ đọc', null, function(){
+    showConfirm('ĐẶT LẠI TIẾN ĐỘ?\nSách sẽ bắt đầu từ đầu.', function(){
+      book.lastLocation = null; book.progress = 0; book.finished = false;
+      saveState(); renderBookGrid(); closeSheet('bookMenuSheet');
+      showToast('Đã đặt lại tiến độ');
+    });
+  }));
+  var infoLines = [];
+  infoLines.push('Loại: ' + book.type.toUpperCase());
+  infoLines.push('Dung lượng: ' + formatBytes(book.size));
+  infoLines.push('Tổng thời gian đọc: ' + formatDuration(book.totalReadingMs || 0));
+  if (book.lastRead) infoLines.push('Lần đọc cuối: ' + new Date(book.lastRead).toLocaleString('vi-VN'));
+  var infoItem = makeMenuItem('Thông tin sách', infoLines.join('\n'), function(){});
+  infoItem.style.pointerEvents = 'none';
+  list.appendChild(infoItem);
+  list.appendChild(makeMenuItem('Xóa khỏi thư viện', null, function(){
+    showConfirm('XÓA "' + book.name.toUpperCase() + '"?\nHành động không thể hoàn tác.', async function(){
+      try { await deleteFile(book.id); } catch(e) {}
+      state.books = state.books.filter(function(b){ return b.id !== book.id; });
+      saveState(); renderLibrary(); closeSheet('bookMenuSheet');
+      showToast('Đã xóa sách');
+    });
+  }, true));
+  $('bookMenuSheet').classList.add('active');
+}
+function openMoveToCategory(book) {
+  var list = $('categoryList');
+  list.innerHTML = '';
+  $('categorySheetTitle').textContent = 'Chuyển vào danh mục';
+  var options = [{ id: null, name: '(Không có danh mục)' }].concat(state.categories);
+  options.forEach(function(cat){
+    var item = makeMenuItem(cat.name, null, function(){
+      book.categoryId = cat.id;
+      saveState(); renderBookGrid(); closeSheet('categorySheet');
+      showToast('Đã chuyển danh mục');
+    });
+    if (book.categoryId === cat.id) item.style.background = 'var(--accent-soft)';
+    list.appendChild(item);
+  });
+  $('categoryAddBtn').style.display = 'none';
+  $('categoryClose').textContent = 'Hủy';
+  $('categorySheet').classList.add('active');
+}
+function openCategoryManager() {
+  var list = $('categoryList');
+  list.innerHTML = '';
+  $('categorySheetTitle').textContent = 'Danh mục';
+  if (state.categories.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-style:italic;">Chưa có danh mục nào</div>';
+  } else {
+    state.categories.forEach(function(cat){
+      var count = state.books.filter(function(b){ return b.categoryId === cat.id; }).length;
+      var item = makeMenuItem(cat.name, count + ' sách', function(){ openRenameCategory(cat); });
+      var pressTimer = null;
+      item.addEventListener('touchstart', function(){
+        pressTimer = setTimeout(function(){
+          if (navigator.vibrate) try { navigator.vibrate(25); } catch(e){}
+          confirmDeleteCategory(cat);
+        }, 600);
+      }, { passive: true });
+      item.addEventListener('touchend', function(){ if (pressTimer) clearTimeout(pressTimer); });
+      item.addEventListener('touchmove', function(){ if (pressTimer) clearTimeout(pressTimer); });
+      list.appendChild(item);
+    });
+  }
+  $('categoryAddBtn').style.display = '';
+  $('categoryClose').textContent = 'Đóng';
+  $('categorySheet').classList.add('active');
+}
+function addCategory() {
+  showPrompt('Tên danh mục mới', '', function(name){
+    if (!name) return;
+    state.categories.push({ id: uid('c'), name: name });
+    saveState(); renderCategoryChips();
+    if ($('categorySheet').classList.contains('active') &&
+        $('categorySheetTitle').textContent === 'Danh mục') openCategoryManager();
+    showToast('Đã thêm: ' + name);
+  });
+}
+function openRenameCategory(cat) {
+  showPrompt('Đổi tên danh mục', cat.name, function(name){
+    if (!name) return;
+    cat.name = name;
+    saveState(); renderCategoryChips(); renderBookGrid();
+    if ($('categorySheet').classList.contains('active') &&
+        $('categorySheetTitle').textContent === 'Danh mục') openCategoryManager();
+    showToast('Đã đổi tên');
+  });
+}
+function confirmDeleteCategory(cat) {
+  var count = state.books.filter(function(b){ return b.categoryId === cat.id; }).length;
+  showConfirm(
+    'XÓA DANH MỤC "' + cat.name.toUpperCase() + '"?\n' +
+    (count > 0 ? count + ' sách sẽ trở về "Không có danh mục".' : ''),
+    function(){
+      state.categories = state.categories.filter(function(c){ return c.id !== cat.id; });
+      state.books.forEach(function(b){ if (b.categoryId === cat.id) b.categoryId = null; });
+      if (state.activeCategory === cat.id) state.activeCategory = 'all';
+      saveState(); renderLibrary();
+      if ($('categorySheet').classList.contains('active')) openCategoryManager();
+      showToast('Đã xóa danh mục');
+    }
+  );
+}
+
+async function openReaderForBook(bookId) {
+  var book = state.books.find(function(b){ return b.id === bookId; });
+  if (!book) return;
+  if (book.type === 'epub' && !window.ePub) { showToast('Thư viện EPUB chưa sẵn sàng. Kiểm tra mạng.', 3500); return; }
+  if (book.type === 'pdf' && !window.pdfjsLib) { showToast('Thư viện PDF chưa sẵn sàng. Kiểm tra mạng.', 3500); return; }
+  currentBook = book;
+  $('reader').classList.add('active');
+  $('readerTitle').textContent = book.name;
+  $('readerChapter').textContent = '';
+  $('readerContent').innerHTML = '';
+  $('readerContent').className = 'reader-content';
+  $('readerTimer').classList.toggle('hidden', !state.settings.timerVisible);
+  $('readerTtsBtn').style.display = book.type === 'epub' ? '' : 'none';
+  $('readerTocBtn').style.display = book.type === 'epub' ? '' : 'none';
+  epubLocationsReady = false;
+  epubTotalLocations = 0;
+  epubCurrentLocation = 0;
+
+  var slider = $('readerSlider');
+  slider.value = 0;
+  slider.max = 0;
+  slider.disabled = true;
+  slider.style.setProperty('--slider-pct', '0%');
+  $('readerPageLabel').innerHTML = '<span class="cur">1</span> / <span class="total">1</span>';
+
+  startSessionTimer();
+  book.sessionStart = Date.now();
+  state.openDates[todayStr()] = true;
+  saveState();
+
+  showLoading('Đang mở sách...');
+  try {
+    var blob = await getFile(book.id);
+    if (!blob) { hideLoading(); showToast('Không tìm thấy file'); closeReader(); return; }
+    if (book.type === 'epub') await openEpubReader(book, blob);
+    else if (book.type === 'pdf') await openPdfReader(book, blob);
+    book.lastRead = Date.now();
+    saveState();
+    document.body.classList.add('reader-open');
+    if (!readerHistoryActive) {
+      history.pushState({ reader: true }, '');
+      readerHistoryActive = true;
+    }
+  } catch(e) {
+    console.error('Open reader failed', e);
+    showToast('Không mở được sách: ' + (e && e.message ? e.message : 'lỗi'));
+  }
+  hideLoading();
+}
+function startSessionTimer() {
+  sessionStartMs = Date.now();
+  if (sessionTimerId) clearInterval(sessionTimerId);
+  updateTimerDisplay();
+  sessionTimerId = setInterval(updateTimerDisplay, 1000);
+}
+function updateTimerDisplay() {
+  var ms = Date.now() - sessionStartMs;
+  var el = $('readerTimer');
+  if (el) el.textContent = formatClock(ms);
+}
+function stopSessionTimer() {
+  if (sessionTimerId) { clearInterval(sessionTimerId); sessionTimerId = null; }
+}
+function toggleReaderBars() {
+  $('reader').classList.toggle('focus');
+}
+function finalizeCurrentSession() {
+  if (!currentBook || !currentBook.sessionStart) return;
+  var elapsed = Date.now() - currentBook.sessionStart;
+  if (elapsed > 1000) recordSessionTime(currentBook.id, elapsed);
+  currentBook.sessionStart = null;
+  saveState();
+}
+function performCloseReader() {
+  finalizeCurrentSession();
+  stopTTS();
+  if (epubBook) { try { epubBook.destroy(); } catch(e) {} epubBook = null; rendition = null; }
+  if (pdfDoc) { try { pdfDoc.destroy(); } catch(e) {} pdfDoc = null; }
+  pdfPageNum = 1; pdfTotalPages = 0;
+  epubLocationsReady = false;
+  epubTotalLocations = 0;
+  epubCurrentLocation = 0;
+  stopSessionTimer();
+  $('reader').classList.remove('active', 'focus');
+  $('readerContent').innerHTML = '';
+  document.body.classList.remove('reader-open');
+  currentBook = null;
+  renderLibrary();
+  if (state.activeView === 'stats') renderStatsView();
+}
+function closeReader() {
+  performCloseReader();
+  if (readerHistoryActive) {
+    readerHistoryActive = false;
+    suppressPopstate = true;
+    try { history.back(); } catch(e) {}
+  }
+}
+
+async function openEpubReader(book, blob) {
+  var arrayBuffer = await blob.arrayBuffer();
+  epubBook = window.ePub(arrayBuffer);
+  await epubBook.ready;
+
+  epubBook.locations.generate(1024).then(function(){
+    if (!epubBook) return;
+    epubLocationsReady = true;
+    epubTotalLocations = epubBook.locations.length();
+    var slider = $('readerSlider');
+    slider.max = Math.max(0, epubTotalLocations - 1);
+    slider.disabled = false;
+    if (book.lastLocation) {
+      try {
+        var loc = epubBook.locations.locationFromCfi(book.lastLocation);
+        if (typeof loc === 'number' && loc >= 0) {
+          epubCurrentLocation = loc;
+          updateEpubPageDisplay(loc);
+          slider.value = loc;
+          updateSliderPct(slider, loc, epubTotalLocations - 1);
+        }
+      } catch(e) {}
+    }
+  }).catch(function(e){ console.warn('locations generate failed', e); });
+
+  rendition = epubBook.renderTo('readerContent', {
+    width: '100%', height: '100%',
+    spread: 'none', flow: 'paginated',
+    allowScriptedContent: false
+  });
+
+  rendition.hooks.content.register(function(contents) {
+    applyCustomEpubCSS(contents);
+    attachEpubContentHandlers(contents);
+  });
+
+  try {
+    if (book.lastLocation) await rendition.display(book.lastLocation);
+    else await rendition.display();
+  } catch(e) {
+    try { await rendition.display(); } catch(e2) {}
+  }
+
+  rendition.on('relocated', function(loc){
+    if (!loc || !loc.start) return;
+    var cfi = loc.start.cfi;
+    book.lastLocation = cfi;
+    var pct = 0;
+    try {
+      if (epubBook.locations && epubBook.locations.length() > 0) {
+        pct = epubBook.locations.percentageFromCfi(cfi) || 0;
+        var locationIdx = epubBook.locations.locationFromCfi(cfi);
+        if (typeof locationIdx === 'number' && locationIdx >= 0) {
+          epubCurrentLocation = locationIdx;
+          updateEpubPageDisplay(locationIdx);
+          var slider = $('readerSlider');
+          if (document.activeElement !== slider) {
+            slider.value = locationIdx;
+            updateSliderPct(slider, locationIdx, epubTotalLocations - 1);
+          }
+        }
+      }
+    } catch(e) {}
+    if (pct) book.progress = pct;
+    saveState();
+    try {
+      var href = loc.start.href;
+      var chapterTitle = '';
+      var nav = epubBook.navigation;
+      if (nav && nav.toc) {
+        var found = findTocByHref(nav.toc, href);
+        if (found && found.label) chapterTitle = found.label.trim();
+      }
+      if (!chapterTitle) {
+        var item = epubBook.spine.get(href);
+        if (item && item.href) {
+          var last = item.href.split('/').pop();
+          chapterTitle = last.replace(/\.(x?html?|xml)$/i, '');
+        }
+      }
+      $('readerChapter').textContent = chapterTitle || '';
+    } catch(e) { $('readerChapter').textContent = ''; }
+
+    if (ttsState.awaitingPage) {
+      ttsState.awaitingPage = false;
+      if (ttsState.isSpeaking && !ttsState.isPaused) {
+        setTimeout(continueTTSOnPage, 300);
+      }
+    } else if (ttsState.isSpeaking && !ttsState.isPaused) {
+      try { window.speechSynthesis.cancel(); } catch(e) {}
+      ttsState.queue = [];
+      ttsState.currentIndex = 0;
+      ttsState.currentUtterance = null;
+      setTimeout(function(){
+        if (ttsState.isSpeaking && !ttsState.isPaused) continueTTSOnPage();
+      }, 400);
+    }
+  });
+}
+
+function updateSliderPct(slider, val, max) {
+  if (max <= 0) {
+    slider.style.setProperty('--slider-pct', '0%');
+    return;
+  }
+  var pct = (val / max) * 100;
+  slider.style.setProperty('--slider-pct', pct + '%');
+}
+function updateEpubPageDisplay(locationIdx) {
+  var label = $('readerPageLabel');
+  if (!label) return;
+  var cur = locationIdx + 1;
+  var total = epubTotalLocations;
+  label.innerHTML = '<span class="cur">' + cur + '</span> / <span class="total">' + total + '</span>';
+}
+function findTocByHref(toc, href) {
+  for (var i = 0; i < toc.length; i++) {
+    var item = toc[i];
+    if (item.href) {
+      var h = item.href.split('#')[0];
+      var target = href.split('#')[0];
+      if (h === target) return item;
+    }
+    if (item.subitems && item.subitems.length > 0) {
+      var found = findTocByHref(item.subitems, href);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function getEpubCSS() {
+  var isDark = state.settings.theme === 'dark';
+  var textColor = isDark ? '#d0d8e8' : '#1a1a1a';
+  var bgColor = isDark ? '#0d1117' : '#faf8f2';
+  var linkColor = isDark ? '#f0d27a' : '#9b7a1f';
+  var fontSize = state.settings.fontSize || 100;
+  var family = state.settings.fontFamily || 'serif';
+  var familyRule = '';
+  if (family === 'sans') {
+    familyRule = 'font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;';
+  } else if (family !== 'original') {
+    familyRule = 'font-family: "Times New Roman", Times, Georgia, serif !important;';
+  }
+
+  return '' +
+  'html { font-size: ' + fontSize + '% !important; }' +
+  'html, body {' +
+    'background: ' + bgColor + ' !important;' +
+    'color: ' + textColor + ' !important;' +
+    familyRule +
+    'line-height: 1.65 !important;' +
+  '}' +
+  'body {' +
+    'padding: 8px 18px 24px !important;' +
+    'margin: 0 !important;' +
+    'text-align: justify !important;' +
+    'text-justify: inter-word !important;' +
+    '-webkit-hyphens: auto !important;' +
+    'hyphens: auto !important;' +
+    'word-spacing: 0.02em !important;' +
+    'overflow-wrap: break-word !important;' +
+    'word-break: normal !important;' +
+  '}' +
+  'p {' +
+    'font-family: inherit !important;' +
+    'font-size: 1em !important;' +
+    'color: inherit !important;' +
+    'text-align: justify !important;' +
+    'text-justify: inter-word !important;' +
+    'text-indent: 1.5em !important;' +
+    'margin: 0 0 0.7em 0 !important;' +
+    'line-height: 1.65 !important;' +
+    'padding: 0 !important;' +
+    '-webkit-hyphens: auto !important;' +
+    'hyphens: auto !important;' +
+  '}' +
+  'p:first-of-type, p:first-child { text-indent: 0 !important; }' +
+  'h1, h2, h3, h4, h5, h6 {' +
+    familyRule +
+    'font-weight: bold !important;' +
+    'color: inherit !important;' +
+    'text-indent: 0 !important;' +
+    'line-height: 1.35 !important;' +
+    'padding: 0 !important;' +
+    'page-break-after: avoid !important;' +
+  '}' +
+  'h1 { font-size: 1.8em !important; text-align: center !important; margin: 0.9em 0 0.9em !important; }' +
+  'h2 { font-size: 1.5em !important; text-align: center !important; margin: 1.1em 0 0.6em !important; }' +
+  'h3 { font-size: 1.25em !important; text-align: left !important; margin: 1.1em 0 0.5em !important; }' +
+  'h4 { font-size: 1.1em !important; text-align: left !important; margin: 1em 0 0.4em !important; }' +
+  'h5, h6 { font-size: 1em !important; text-align: left !important; margin: 1em 0 0.4em !important; }' +
+  'b, strong { font-weight: bold !important; }' +
+  'i, em { font-style: italic !important; }' +
+  'blockquote {' +
+    'font-family: inherit !important;' +
+    'text-align: justify !important;' +
+    'margin: 0.8em 1.2em !important;' +
+    'padding: 0 0 0 0.8em !important;' +
+    'border-left: 3px solid ' + (isDark ? 'rgba(212,175,55,0.3)' : 'rgba(155,122,31,0.3)') + ' !important;' +
+    'font-style: italic !important;' +
+    'font-size: 0.98em !important;' +
+  '}' +
+  'ul, ol { text-align: justify !important; margin: 0.7em 0 !important; padding-left: 1.6em !important; }' +
+  'li { text-align: justify !important; margin: 0.35em 0 !important; padding: 0 !important; line-height: 1.6 !important; }' +
+  'img { max-width: 100% !important; height: auto !important; display: block !important; margin: 1em auto !important; }' +
+  'figure { margin: 1em 0 !important; text-align: center !important; }' +
+  'figcaption { font-size: 0.9em !important; color: ' + (isDark ? '#8a92a8' : '#6a6f7a') + ' !important; margin-top: 0.4em !important; text-align: center !important; }' +
+  'a, a:link, a:visited {' +
+    'color: ' + linkColor + ' !important;' +
+    'text-decoration: underline !important;' +
+    'background: transparent !important;' +
+  '}' +
+  'code, pre, kbd, samp {' +
+    'font-family: "Courier New", monospace !important;' +
+    'font-size: 0.92em !important;' +
+    'background: ' + (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)') + ' !important;' +
+    'padding: 0.15em 0.35em !important;' +
+    'border-radius: 3px !important;' +
+  '}' +
+  'pre { padding: 0.8em !important; overflow-x: auto !important; text-align: left !important; text-indent: 0 !important; }' +
+  'table { border-collapse: collapse !important; margin: 1em 0 !important; max-width: 100% !important; }' +
+  'td, th { padding: 0.4em 0.6em !important; border: 1px solid ' + (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') + ' !important; text-indent: 0 !important; text-align: left !important; }' +
+  'hr { border: none !important; border-top: 1px solid ' + (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') + ' !important; margin: 1.5em 0 !important; }' +
+  '[style*="font-size"] { font-size: inherit !important; }' +
+  '[style*="font-family"] { font-family: inherit !important; }' +
+  '[style*="text-align"] { text-align: inherit !important; }' +
+  '::selection { background: rgba(240,213,76,0.4) !important; }' +
+  '* { -webkit-user-select: text !important; user-select: text !important; -webkit-touch-callout: default !important; }' +
+  '';
+}
+function applyCustomEpubCSS(contents) {
+  try {
+    var doc = contents.document;
+    if (!doc) return;
+    var styleEl = doc.getElementById('wa-custom-style');
+    if (!styleEl) {
+      styleEl = doc.createElement('style');
+      styleEl.id = 'wa-custom-style';
+      (doc.head || doc.documentElement).appendChild(styleEl);
+    }
+    styleEl.textContent = getEpubCSS();
+  } catch(e) { console.warn('inject CSS failed', e); }
+}
+
+function attachEpubContentHandlers(contents) {
+  var doc = contents.document;
+  var win = contents.window;
+  if (!doc || !win) return;
+  if (doc.__waHandlersAttached) return;
+  doc.__waHandlersAttached = true;
+
+  var sx = 0, sy = 0, st = 0, moved = false;
+  var SWIPE_THRESHOLD = 45;
+  var TAP_TIME = 300;
+  var TAP_MOVE = 12;
+
+  doc.addEventListener('touchstart', function(e){
+    if (e.touches.length !== 1) return;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    st = Date.now();
+    moved = false;
+  }, { passive: true });
+
+  doc.addEventListener('touchmove', function(e){
+    if (e.touches.length !== 1) return;
+    var dx = e.touches[0].clientX - sx;
+    var dy = e.touches[0].clientY - sy;
+    if (Math.abs(dx) > TAP_MOVE || Math.abs(dy) > TAP_MOVE) moved = true;
+  }, { passive: true });
+
+  doc.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].clientX - sx;
+    var dy = e.changedTouches[0].clientY - sy;
+    var dt = Date.now() - st;
+    var absDx = Math.abs(dx), absDy = Math.abs(dy);
+
+    if (absDx > SWIPE_THRESHOLD && absDx > absDy * 1.4) {
+      try {
+        if (dx < 0) rendition.next();
+        else rendition.prev();
+      } catch(err) {}
+      return;
+    }
+
+    if (!moved && dt < TAP_TIME) {
+      var sel = win.getSelection && win.getSelection();
+      if (sel && sel.toString().trim().length > 0) return;
+      toggleReaderBars();
+    }
+  }, { passive: true });
+}
+
+async function openPdfReader(book, blob) {
+  var arrayBuffer = await blob.arrayBuffer();
+  pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  pdfTotalPages = pdfDoc.numPages;
+  var startPage = 1;
+  if (book.lastLocation && typeof book.lastLocation === 'number') {
+    startPage = Math.max(1, Math.min(pdfTotalPages, book.lastLocation));
+  }
+  $('readerContent').className = 'reader-content pdf-scroll';
+  var slider = $('readerSlider');
+  slider.min = 0;
+  slider.max = Math.max(0, pdfTotalPages - 1);
+  slider.value = startPage - 1;
+  slider.disabled = false;
+  updateSliderPct(slider, startPage - 1, pdfTotalPages - 1);
+  updatePdfPageDisplay(startPage, pdfTotalPages);
+  attachPdfGestures();
+  await renderPdfPage(startPage);
+}
+function updatePdfPageDisplay(cur, total) {
+  var label = $('readerPageLabel');
+  if (!label) return;
+  label.innerHTML = '<span class="cur">' + cur + '</span> / <span class="total">' + total + '</span>';
+}
+function attachPdfGestures() {
+  var container = $('readerContent');
+  if (container._pdfHandlersAttached) return;
+  container._pdfHandlersAttached = true;
+  var sx = 0, sy = 0, st = 0, moved = false;
+  var SWIPE_THRESHOLD = 45, TAP_TIME = 300, TAP_MOVE = 12;
+  container.addEventListener('touchstart', function(e){
+    if (e.touches.length !== 1) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now(); moved = false;
+  }, { passive: true });
+  container.addEventListener('touchmove', function(e){
+    if (e.touches.length !== 1) return;
+    var dx = e.touches[0].clientX - sx;
+    var dy = e.touches[0].clientY - sy;
+    if (Math.abs(dx) > TAP_MOVE || Math.abs(dy) > TAP_MOVE) moved = true;
+  }, { passive: true });
+  container.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].clientX - sx;
+    var dy = e.changedTouches[0].clientY - sy;
+    var dt = Date.now() - st;
+    var absDx = Math.abs(dx), absDy = Math.abs(dy);
+    if (absDx > SWIPE_THRESHOLD && absDx > absDy * 1.4) {
+      if (dx < 0) goToNextPdfPage(); else goToPrevPdfPage();
+      return;
+    }
+    if (!moved && dt < TAP_TIME) toggleReaderBars();
+  }, { passive: true });
+}
+function goToPrevPdfPage() { if (pdfDoc && pdfPageNum > 1) renderPdfPage(pdfPageNum - 1); }
+function goToNextPdfPage() { if (pdfDoc && pdfPageNum < pdfTotalPages) renderPdfPage(pdfPageNum + 1); }
+async function renderPdfPage(n) {
+  if (!pdfDoc || !currentBook) return;
+  n = Math.max(1, Math.min(pdfTotalPages, n));
+  var container = $('readerContent');
+  var page = await pdfDoc.getPage(n);
+  var dpr = Math.min(window.devicePixelRatio || 1, 3);
+  var cw = Math.max(200, container.clientWidth);
+  var vp1 = page.getViewport({ scale: 1 });
+  var cssScale = cw / vp1.width;
+  var vp = page.getViewport({ scale: cssScale * dpr });
+  var canvas = document.createElement('canvas');
+  canvas.width = Math.round(vp.width);
+  canvas.height = Math.round(vp.height);
+  canvas.style.width = (vp.width / dpr) + 'px';
+  canvas.style.height = (vp.height / dpr) + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  container.innerHTML = '';
+  container.appendChild(canvas);
+  container.scrollTop = 0;
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  pdfPageNum = n;
+  currentBook.lastLocation = n;
+  var pct = pdfTotalPages > 0 ? n / pdfTotalPages : 0;
+  currentBook.progress = pct;
+  updatePdfPageDisplay(n, pdfTotalPages);
+  $('readerChapter').textContent = 'Trang ' + n + ' / ' + pdfTotalPages;
+  var slider = $('readerSlider');
+  if (document.activeElement !== slider) {
+    slider.value = n - 1;
+    updateSliderPct(slider, n - 1, pdfTotalPages - 1);
+  }
+  saveState();
+}
+
+var sliderDebounce = null;
+function onSliderInput(e) {
+  var v = parseInt(e.target.value, 10);
+  if (isNaN(v)) return;
+  if (!currentBook) return;
+  var max = parseInt(e.target.max, 10) || 0;
+  updateSliderPct(e.target, v, max);
+
+  if (currentBook.type === 'epub') {
+    var cur = v + 1;
+    var label = $('readerPageLabel');
+    if (label) label.innerHTML = '<span class="cur">' + cur + '</span> / <span class="total">' + epubTotalLocations + '</span>';
+    if (sliderDebounce) clearTimeout(sliderDebounce);
+    sliderDebounce = setTimeout(function() {
+      if (!epubBook || !epubLocationsReady) return;
+      try {
+        var cfi = epubBook.locations.cfiFromLocation(v);
+        if (cfi) rendition.display(cfi);
+      } catch(err) { console.warn('slider epub jump failed', err); }
+    }, 80);
+  } else if (currentBook.type === 'pdf') {
+    var cur2 = v + 1;
+    updatePdfPageDisplay(cur2, pdfTotalPages);
+    if (sliderDebounce) clearTimeout(sliderDebounce);
+    sliderDebounce = setTimeout(function() { renderPdfPage(v + 1); }, 80);
+  }
+}
+
+function initTTS() {
+  if (!('speechSynthesis' in window)) return;
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+function loadVoices() {
+  try {
+    var voices = window.speechSynthesis.getVoices() || [];
+    var vi = voices.find(function(v) {
+      var l = (v.lang || '').toLowerCase();
+      return l.indexOf('vi') === 0 || l.indexOf('vi-') === 0;
+    });
+    if (vi) ttsState.voice = vi;
+  } catch(e) {}
+}
+function toggleTTS() {
+  if (!currentBook || currentBook.type !== 'epub') return;
+  if (!('speechSynthesis' in window)) { showToast('Thiết bị không hỗ trợ đọc văn bản'); return; }
+  if (ttsState.isSpeaking) {
+    if (ttsState.isPaused) {
+      window.speechSynthesis.resume();
+      ttsState.isPaused = false;
+    } else {
+      window.speechSynthesis.pause();
+      ttsState.isPaused = true;
+    }
+    updateTTSButton();
+    return;
+  }
+  startTTSFromCurrentPage();
+}
+function startTTSFromCurrentPage() {
+  if (!rendition) return;
+  try {
+    var contents = rendition.getContents();
+    if (!contents || contents.length === 0) { showToast('Không tìm thấy nội dung'); return; }
+    var text = getVisibleTextFromIframe(contents[0]);
+    if (!text || text.trim().length < 3) { showToast('Trang này không có nội dung đọc'); return; }
+    var chunks = splitTextIntoChunks(text, 180);
+    ttsState.queue = chunks;
+    ttsState.currentIndex = 0;
+    ttsState.isSpeaking = true;
+    ttsState.isPaused = false;
+    ttsState.awaitingPage = false;
+    updateTTSButton();
+    speakNextChunk();
+  } catch(e) {
+    console.error('TTS start failed', e);
+    showToast('Không đọc được văn bản');
+  }
+}
+function continueTTSOnPage() {
+  if (!ttsState.isSpeaking || ttsState.isPaused) return;
+  try {
+    var contents = rendition.getContents();
+    if (!contents || contents.length === 0) {
+      ttsState.isSpeaking = false;
+      updateTTSButton();
+      return;
+    }
+    var text = getVisibleTextFromIframe(contents[0]);
+    if (!text || text.trim().length < 3) {
+      advanceTTS();
+      return;
+    }
+    var chunks = splitTextIntoChunks(text, 180);
+    ttsState.queue = chunks;
+    ttsState.currentIndex = 0;
+    speakNextChunk();
+  } catch(e) {
+    ttsState.isSpeaking = false;
+    updateTTSButton();
+  }
+}
+function advanceTTS() {
+  if (!ttsState.isSpeaking) return;
+  var atEnd = false;
+  try { atEnd = rendition.atEnd(); } catch(e) {}
+  if (atEnd) {
+    ttsState.isSpeaking = false;
+    ttsState.isPaused = false;
+    updateTTSButton();
+    showToast('Đã đọc hết sách');
+    return;
+  }
+  ttsState.awaitingPage = true;
+  try {
+    rendition.next();
+  } catch(e) {
+    ttsState.awaitingPage = false;
+    ttsState.isSpeaking = false;
+    updateTTSButton();
+  }
+}
+function speakNextChunk() {
+  if (!ttsState.isSpeaking) return;
+  if (ttsState.isPaused) return;
+  if (ttsState.currentIndex >= ttsState.queue.length) {
+    advanceTTS();
+    return;
+  }
+  var text = ttsState.queue[ttsState.currentIndex];
+  var utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'vi-VN';
+  utt.rate = 1.0;
+  utt.pitch = 1.0;
+  utt.volume = 1.0;
+  if (ttsState.voice) utt.voice = ttsState.voice;
+  utt.onend = function() {
+    if (!ttsState.isSpeaking || ttsState.isPaused) return;
+    ttsState.currentIndex++;
+    if (ttsState.currentIndex >= ttsState.queue.length) {
+      advanceTTS();
+    } else {
+      speakNextChunk();
+    }
+  };
+  utt.onerror = function(e) {
+    if (e.error === 'interrupted' || e.error === 'canceled') return;
+    ttsState.isSpeaking = false;
+    ttsState.isPaused = false;
+    updateTTSButton();
+  };
+  ttsState.currentUtterance = utt;
+  try { window.speechSynthesis.speak(utt); }
+  catch(e) {
+    ttsState.isSpeaking = false;
+    updateTTSButton();
+  }
+}
+function stopTTS() {
+  try { window.speechSynthesis.cancel(); } catch(e) {}
+  ttsState.isSpeaking = false;
+  ttsState.isPaused = false;
+  ttsState.queue = [];
+  ttsState.currentIndex = 0;
+  ttsState.currentUtterance = null;
+  ttsState.awaitingPage = false;
+  updateTTSButton();
+}
+function updateTTSButton() {
+  var btn = $('readerTtsBtn');
+  if (!btn) return;
+  var playIcon = $('ttsPlayIcon');
+  var pauseIcon = $('ttsPauseIcon');
+  if (ttsState.isSpeaking && !ttsState.isPaused) {
+    btn.classList.add('active');
+    playIcon.style.display = 'none';
+    pauseIcon.style.display = '';
+  } else {
+    btn.classList.remove('active');
+    playIcon.style.display = '';
+    pauseIcon.style.display = 'none';
+  }
+}
+
+function getVisibleTextFromIframe(contents) {
+  try {
+    var win = contents.window;
+    var doc = contents.document;
+    if (!doc || !doc.body) return '';
+    var viewTop = 0;
+    var viewBottom = win.innerHeight || doc.documentElement.clientHeight || 0;
+    if (!viewBottom) return extractTextFromElement(doc.body);
+
+    var parts = [];
+
+    function isNodeVisible(node) {
+      try {
+        var range = doc.createRange();
+        range.selectNodeContents(node);
+        var rects = range.getClientRects();
+        for (var i = 0; i < rects.length; i++) {
+          var r = rects[i];
+          if (r.height === 0) continue;
+          if (r.bottom > viewTop && r.top < viewBottom) return true;
+        }
+      } catch(e) {}
+      return false;
+    }
+
+    function walk(node) {
+      if (!node) return;
+      if (node.nodeType === 3) {
+        var t = node.textContent;
+        if (!t || !t.trim()) return;
+        if (isNodeVisible(node)) parts.push(t);
+        return;
+      }
+      if (node.nodeType === 1) {
+        var tag = (node.tagName || '').toLowerCase();
+        if (tag === 'script' || tag === 'style' || tag === 'noscript') return;
+        var isBlock = /^(p|div|h[1-6]|li|blockquote|br|tr|figure|figcaption|section|article|header|footer|aside|nav|pre)$/.test(tag);
+        if (isBlock && parts.length > 0) parts.push('\n');
+        for (var i = 0; i < node.childNodes.length; i++) walk(node.childNodes[i]);
+        if (isBlock) parts.push('\n');
+      }
+    }
+    walk(doc.body);
+    return parts.join('').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  } catch(e) {
+    return '';
+  }
+}
+
+function extractTextFromElement(el) {
+  var textParts = [];
+  function walk(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      var t = node.textContent;
+      if (t) textParts.push(t);
+    } else if (node.nodeType === 1) {
+      var tag = (node.tagName || '').toLowerCase();
+      if (tag === 'script' || tag === 'style' || tag === 'noscript') return;
+      var isBlock = /^(p|div|h[1-6]|li|blockquote|br|tr|figure|figcaption|section|article|header|footer|aside|nav|pre)$/.test(tag);
+      if (isBlock && textParts.length > 0) textParts.push('\n');
+      for (var i = 0; i < node.childNodes.length; i++) walk(node.childNodes[i]);
+      if (isBlock) textParts.push('\n');
+    }
+  }
+  walk(el);
+  return textParts.join('').replace(/\s+/g, ' ').replace(/\n /g, '\n').trim();
+}
+function splitTextIntoChunks(text, maxLen) {
+  var chunks = [];
+  var sentences = text.split(/(?<=[.!?…])\s+|(?<=[:;])\s+/);
+  var buf = '';
+  for (var i = 0; i < sentences.length; i++) {
+    var s = sentences[i];
+    if (!s) continue;
+    if (buf.length + s.length + 1 <= maxLen) {
+      buf = buf ? (buf + ' ' + s) : s;
+    } else {
+      if (buf) chunks.push(buf);
+      if (s.length > maxLen) {
+        var parts = s.match(new RegExp('.{1,' + maxLen + '}', 'g')) || [];
+        for (var j = 0; j < parts.length - 1; j++) chunks.push(parts[j]);
+        buf = parts[parts.length - 1] || '';
+      } else {
+        buf = s;
+      }
+    }
+  }
+  if (buf) chunks.push(buf);
+  return chunks.filter(function(c){ return c.trim().length > 0; });
+}
+
+function openReaderMenu() {
+  if (!currentBook) return;
+  $('readerMenuTitle').textContent = currentBook.name;
+  var c = $('readerMenuContent');
+  c.innerHTML = '';
+
+  var themeSec = document.createElement('div');
+  themeSec.className = 'rm-section';
+  themeSec.innerHTML = '<div class="rm-label">Giao diện</div>';
+  var themeRow = document.createElement('div');
+  themeRow.className = 'rm-row';
+  themeRow.innerHTML = '<span>Chế độ</span>';
+  var tg = document.createElement('div');
+  tg.className = 'rm-btn-group';
+  ['light', 'dark'].forEach(function(t){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rm-mini-btn' + (state.settings.theme === t ? ' active' : '');
+    b.textContent = t === 'light' ? 'Sáng' : 'Tối';
+    b.addEventListener('click', function(){
+      state.settings.theme = t; saveState(); applyTheme(); openReaderMenu();
+    });
+    tg.appendChild(b);
+  });
+  themeRow.appendChild(tg);
+  themeSec.appendChild(themeRow);
+  c.appendChild(themeSec);
+
+  if (currentBook.type === 'epub') {
+    var fontSec = document.createElement('div');
+    fontSec.className = 'rm-section';
+    fontSec.innerHTML = '<div class="rm-label">Cỡ chữ</div>';
+    var row = document.createElement('div');
+    row.className = 'rm-row';
+    row.innerHTML = '<span>Kích thước</span>';
+    var grp = document.createElement('div');
+    grp.className = 'rm-btn-group';
+    var minus = document.createElement('button');
+    minus.type = 'button'; minus.className = 'rm-mini-btn'; minus.textContent = 'A−';
+    var val = document.createElement('span');
+    val.className = 'val'; val.style.minWidth = '56px'; val.style.textAlign = 'center';
+    val.textContent = state.settings.fontSize + '%';
+    var plus = document.createElement('button');
+    plus.type = 'button'; plus.className = 'rm-mini-btn'; plus.textContent = 'A+';
+    minus.addEventListener('click', function(){
+      state.settings.fontSize = Math.max(70, state.settings.fontSize - 10);
+      saveState(); applyFontSizeToEpub(); val.textContent = state.settings.fontSize + '%';
+    });
+    plus.addEventListener('click', function(){
+      state.settings.fontSize = Math.min(220, state.settings.fontSize + 10);
+      saveState(); applyFontSizeToEpub(); val.textContent = state.settings.fontSize + '%';
+    });
+    grp.appendChild(minus); grp.appendChild(val); grp.appendChild(plus);
+    row.appendChild(grp);
+    fontSec.appendChild(row);
+    c.appendChild(fontSec);
+
+    var fontFamilySec = document.createElement('div');
+    fontFamilySec.className = 'rm-section';
+    fontFamilySec.innerHTML = '<div class="rm-label">Kiểu chữ</div>';
+    var fRow = document.createElement('div');
+    fRow.className = 'rm-row';
+    fRow.innerHTML = '<span>Font</span>';
+    var fGrp = document.createElement('div');
+    fGrp.className = 'rm-btn-group';
+    [
+      { key: 'serif', label: 'Serif' },
+      { key: 'sans', label: 'Sans' },
+      { key: 'original', label: 'Gốc' }
+    ].forEach(function(opt){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rm-mini-btn' + ((state.settings.fontFamily || 'serif') === opt.key ? ' active' : '');
+      b.textContent = opt.label;
+      b.addEventListener('click', function(){
+        state.settings.fontFamily = opt.key;
+        saveState();
+        applyFontSizeToEpub();
+        openReaderMenu();
+      });
+      fGrp.appendChild(b);
+    });
+    fRow.appendChild(fGrp);
+    fontFamilySec.appendChild(fRow);
+    c.appendChild(fontFamilySec);
+  }
+
+  var timerSec = document.createElement('div');
+  timerSec.className = 'rm-section';
+  timerSec.innerHTML = '<div class="rm-label">Bộ đếm thời gian</div>';
+  var timerRow = document.createElement('div');
+  timerRow.className = 'rm-row';
+  timerRow.innerHTML = '<span>Hiện bộ đếm phiên đọc</span>';
+  var tog = document.createElement('button');
+  tog.type = 'button';
+  tog.className = 'rm-mini-btn' + (state.settings.timerVisible ? ' active' : '');
+  tog.textContent = state.settings.timerVisible ? 'Đang bật' : 'Đang tắt';
+  tog.addEventListener('click', function(){
+    state.settings.timerVisible = !state.settings.timerVisible;
+    saveState();
+    $('readerTimer').classList.toggle('hidden', !state.settings.timerVisible);
+    openReaderMenu();
+  });
+  timerRow.appendChild(tog);
+  timerSec.appendChild(timerRow);
+  c.appendChild(timerSec);
+
+  var infoSec = document.createElement('div');
+  infoSec.className = 'rm-section';
+  infoSec.innerHTML = '<div class="rm-label">Thông tin</div>';
+  var infoRow = document.createElement('div');
+  infoRow.className = 'rm-row';
+  infoRow.innerHTML = '<span>Tổng thời gian đọc</span><span class="val">' + formatDuration(currentBook.totalReadingMs || 0) + '</span>';
+  infoSec.appendChild(infoRow);
+  var progressRow = document.createElement('div');
+  progressRow.className = 'rm-row';
+  progressRow.innerHTML = '<span>Tiến độ</span><span class="val">' + Math.round((currentBook.progress || 0) * 100) + '%</span>';
+  infoSec.appendChild(progressRow);
+  c.appendChild(infoSec);
+
+  var actSec = document.createElement('div');
+  actSec.className = 'rm-section';
+  actSec.innerHTML = '<div class="rm-label">Hành động</div>';
+  actSec.appendChild(makeMenuItem(
+    currentBook.finished ? 'Bỏ đánh dấu đã đọc' : 'Đánh dấu đã đọc', null,
+    function(){
+      currentBook.finished = !currentBook.finished;
+      if (currentBook.finished) currentBook.progress = 1;
+      saveState();
+      closeSheet('readerMenuSheet');
+      showToast(currentBook.finished ? 'Đã đánh dấu hoàn thành' : 'Đã bỏ đánh dấu');
+    }
+  ));
+  c.appendChild(actSec);
+
+  $('readerMenuSheet').classList.add('active');
+}
+function applyFontSizeToEpub() {
+  if (!rendition) return;
+  try {
+    var contents = rendition.getContents();
+    contents.forEach(function(c) { applyCustomEpubCSS(c); });
+  } catch(e) {}
+}
+
+function openTocSheet() {
+  if (!currentBook) return;
+  if (currentBook.type !== 'epub' || !epubBook) {
+    showToast('Mục lục chỉ hỗ trợ sách EPUB');
+    return;
+  }
+  $('tocTitle').textContent = 'Mục lục — ' + currentBook.name;
+  var list = $('tocList');
+  list.innerHTML = '';
+  var toc = epubBook.navigation && epubBook.navigation.toc;
+  if (!toc || toc.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:28px 16px;color:var(--text-muted);font-style:italic;">Sách không có mục lục</div>';
+    $('tocSheet').classList.add('active');
+    return;
+  }
+  var currentHref = '';
+  try {
+    var loc = rendition.currentLocation();
+    if (loc && loc.start && loc.start.href) currentHref = loc.start.href.split('#')[0];
+  } catch(e) {}
+
+  function renderItems(items, depth) {
+    items.forEach(function(item, idx) {
+      var el = document.createElement('div');
+      var subClass = depth === 1 ? ' sub' : (depth >= 2 ? ' sub sub2' : '');
+      el.className = 'toc-item' + subClass;
+      var href = (item.href || '').split('#')[0];
+      if (href === currentHref) el.classList.add('active');
+      el.innerHTML = '<span class="toc-num">' + (depth === 0 ? (idx + 1) : '·') + '</span>' +
+                     '<span class="toc-label">' + escapeHtml(item.label || '') + '</span>';
+      el.addEventListener('click', function() {
+        closeSheet('tocSheet');
+        if (item.href && rendition) {
+          try { rendition.display(item.href); } catch(err) {
+            console.warn('TOC jump failed', err);
+          }
+        }
+      });
+      list.appendChild(el);
+      if (item.subitems && item.subitems.length > 0) {
+        renderItems(item.subitems, depth + 1);
+      }
+    });
+  }
+  renderItems(toc, 0);
+  $('tocSheet').classList.add('active');
+}
+
+function openSortSheet() {
+  var sortOptions = $('sortOptions');
+  sortOptions.innerHTML = '';
+  [
+    { key: 'recent', label: 'Gần đây nhất' },
+    { key: 'name', label: 'Tên (A → Z)' },
+    { key: 'added', label: 'Ngày thêm' },
+    { key: 'progress', label: 'Tiến độ' },
+    { key: 'time', label: 'Thời gian đọc' }
+  ].forEach(function(opt){
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rm-mini-btn';
+    btn.style.cssText = 'width:100%;justify-content:flex-start;text-align:left;margin-bottom:6px;height:42px;';
+    if (state.sortBy === opt.key) btn.classList.add('active');
+    btn.textContent = (state.sortBy === opt.key ? '✓ ' : '') + opt.label;
+    btn.addEventListener('click', function(){
+      state.sortBy = opt.key;
+      saveState();
+      renderLibrary();
+      openSortSheet();
+    });
+    sortOptions.appendChild(btn);
+  });
+
+  var filterOptions = $('filterOptions');
+  filterOptions.innerHTML = '';
+  [
+    { key: 'all', label: 'Tất cả' },
+    { key: 'reading', label: 'Đang đọc' },
+    { key: 'finished', label: 'Đã hoàn thành' },
+    { key: 'unread', label: 'Chưa đọc' }
+  ].forEach(function(opt){
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rm-mini-btn';
+    btn.style.cssText = 'width:100%;justify-content:flex-start;text-align:left;margin-bottom:6px;height:42px;';
+    if (state.filterBy === opt.key) btn.classList.add('active');
+    btn.textContent = (state.filterBy === opt.key ? '✓ ' : '') + opt.label;
+    btn.addEventListener('click', function(){
+      state.filterBy = opt.key;
+      saveState();
+      renderLibrary();
+      openSortSheet();
+    });
+    filterOptions.appendChild(btn);
+  });
+  $('sortSheet').classList.add('active');
+}
+
+var readerHistoryActive = false;
+var suppressPopstate = false;
+
+function initBackButton() {
+  window.addEventListener('popstate', function() {
+    if (suppressPopstate) {
+      suppressPopstate = false;
+      return;
+    }
+    var closed = false;
+    ['bookMenuSheet','categorySheet','readerMenuSheet','promptSheet','scanSheet','tocSheet','sortSheet'].forEach(function(id){
+      var el = $(id);
+      if (el && el.classList.contains('active')) { el.classList.remove('active'); closed = true; }
+    });
+    if ($('confirmDialog').classList.contains('active')) { hideConfirm(); closed = true; }
+
+    if (closed) {
+      history.pushState({ reader: readerHistoryActive }, '');
+      return;
+    }
+    if (readerHistoryActive || currentBook) {
+      readerHistoryActive = false;
+      performCloseReader();
+      return;
+    }
+    if (state.activeView !== 'library') {
+      switchView('library');
+    }
+  });
+}
+
+var pullStartY = 0, pullStartX = 0, pulling = false, pullArmed = false;
+var PULL_THRESHOLD = 100;
+function initPullToScan() {
+  var hint = $('pullHint');
+  document.addEventListener('touchstart', function(e){
+    if (currentBook) return;
+    if (state.activeView !== 'library') return;
+    if (window.scrollY > 4) return;
+    if (e.touches.length !== 1) return;
+    pullStartY = e.touches[0].clientY;
+    pullStartX = e.touches[0].clientX;
+    pulling = false; pullArmed = false;
+  }, { passive: true });
+  document.addEventListener('touchmove', function(e){
+    if (currentBook) return;
+    if (state.activeView !== 'library') return;
+    if (e.touches.length !== 1) return;
+    if (pullStartY === 0) return;
+    var dy = e.touches[0].clientY - pullStartY;
+    var dx = e.touches[0].clientX - pullStartX;
+    if (!pulling) {
+      if (dy > 12 && Math.abs(dy) > Math.abs(dx) * 1.5) pulling = true;
+      else if (Math.abs(dx) > 12) { pullStartY = 0; return; }
+      else return;
+    }
+    if (pulling) {
+      var progress = Math.min(dy, PULL_THRESHOLD + 40);
+      if (progress > 20) {
+        hint.classList.add('show');
+        if (progress >= PULL_THRESHOLD) {
+          if (!pullArmed) {
+            pullArmed = true;
+            hint.classList.add('armed');
+            hint.textContent = 'Thả để quét sách trong máy';
+            if (navigator.vibrate) try { navigator.vibrate(15); } catch(e) {}
+          }
+        } else {
+          pullArmed = false;
+          hint.classList.remove('armed');
+          hint.textContent = 'Kéo xuống để quét sách trong máy';
+        }
+      }
+    }
+  }, { passive: true });
+  document.addEventListener('touchend', function(){
+    if (pulling) {
+      hint.classList.remove('show', 'armed');
+      hint.textContent = 'Kéo xuống để quét sách trong máy';
+      if (pullArmed) {
+        pullArmed = false; pulling = false; pullStartY = 0;
+        setTimeout(triggerScan, 100);
+        return;
+      }
+    }
+    pulling = false; pullArmed = false; pullStartY = 0;
+  }, { passive: true });
+  document.addEventListener('touchcancel', function(){
+    pulling = false; pullArmed = false; pullStartY = 0;
+    hint.classList.remove('show', 'armed');
+    hint.textContent = 'Kéo xuống để quét sách trong máy';
+  }, { passive: true });
+}
+
+function bindEvents() {
+  $('themeToggle').addEventListener('click', toggleTheme);
+  $('themeToggle2').addEventListener('click', toggleTheme);
+  $('addBookBtn').addEventListener('click', function(){ $('fileInput').click(); });
+  $('fileInput').addEventListener('change', function(e){
+    var files = Array.prototype.slice.call(e.target.files || []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    importFiles(files);
+  });
+
+  $('searchBtn').addEventListener('click', function(){
+    var row = $('searchRow');
+    var isActive = row.classList.toggle('active');
+    if (isActive) {
+      setTimeout(function(){ try { $('searchInput').focus(); } catch(e){} }, 100);
+    } else {
+      $('searchInput').value = '';
+      searchQuery = '';
+      renderBookGrid();
+      updateLibHeader();
+    }
+  });
+  var searchDebounce = null;
+  $('searchInput').addEventListener('input', function(e){
+    if (searchDebounce) clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(function(){
+      searchQuery = e.target.value || '';
+      renderBookGrid();
+      updateLibHeader();
+    }, 120);
+  });
+  $('searchClear').addEventListener('click', function(){
+    $('searchInput').value = '';
+    searchQuery = '';
+    renderBookGrid();
+    updateLibHeader();
+    try { $('searchInput').focus(); } catch(e) {}
+  });
+
+  $('scanCancel').addEventListener('click', function(){ closeSheet('scanSheet'); });
+  $('scanSheet').addEventListener('click', function(e){
+    if (e.target === $('scanSheet')) closeSheet('scanSheet');
+  });
+  $('categoryManagerBtn').addEventListener('click', openCategoryManager);
+  $('categoryClose').addEventListener('click', function(){ closeSheet('categorySheet'); });
+  $('categorySheet').addEventListener('click', function(e){
+    if (e.target === $('categorySheet')) closeSheet('categorySheet');
+  });
+  $('categoryAddBtn').addEventListener('click', addCategory);
+  $('bookMenuCancel').addEventListener('click', function(){ closeSheet('bookMenuSheet'); });
+  $('bookMenuSheet').addEventListener('click', function(e){
+    if (e.target === $('bookMenuSheet')) closeSheet('bookMenuSheet');
+  });
+  $('readerMenuClose').addEventListener('click', function(){ closeSheet('readerMenuSheet'); });
+  $('readerMenuSheet').addEventListener('click', function(e){
+    if (e.target === $('readerMenuSheet')) closeSheet('readerMenuSheet');
+  });
+  $('readerMenuBtn').addEventListener('click', openReaderMenu);
+  $('readerTtsBtn').addEventListener('click', toggleTTS);
+
+  $('readerTocBtn').addEventListener('click', openTocSheet);
+  $('tocClose').addEventListener('click', function(){ closeSheet('tocSheet'); });
+  $('tocSheet').addEventListener('click', function(e){
+    if (e.target === $('tocSheet')) closeSheet('tocSheet');
+  });
+
+  $('sortBtn').addEventListener('click', openSortSheet);
+  $('sortClose').addEventListener('click', function(){ closeSheet('sortSheet'); });
+  $('sortSheet').addEventListener('click', function(e){
+    if (e.target === $('sortSheet')) closeSheet('sortSheet');
+  });
+
+  $('promptCancel').addEventListener('click', hidePrompt);
+  $('promptOk').addEventListener('click', function(){
+    var v = $('promptInput').value.trim();
+    var cb = promptCb;
+    hidePrompt();
+    if (cb) cb(v);
+  });
+  $('promptInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') $('promptOk').click();
+  });
+
+  $('confirmNo').addEventListener('click', hideConfirm);
+  $('confirmYes').addEventListener('click', function(){
+    var cb = confirmCb;
+    hideConfirm();
+    if (cb) cb();
+  });
+  $('confirmDialog').addEventListener('click', function(e){
+    if (e.target === $('confirmDialog')) hideConfirm();
+  });
+
+  $('readerBack').addEventListener('click', closeReader);
+  $('readerSlider').addEventListener('input', onSliderInput);
+
+  document.querySelectorAll('.nav-item').forEach(function(btn){
+    btn.addEventListener('click', function(){ switchView(btn.dataset.view); });
+  });
+
+  $('goalSaveBtn').addEventListener('click', function(){
+    var v = parseInt($('goalInput').value, 10);
+    if (isNaN(v) || v < 1) { showToast('Nhập số phút hợp lệ'); return; }
+    if (v > 1440) v = 1440;
+    state.settings.dailyGoalMin = v;
+    saveState();
+    renderGoalBar();
+    renderStatsView();
+    showToast('Đã đặt mục tiêu: ' + v + ' phút/ngày');
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      ['bookMenuSheet','categorySheet','readerMenuSheet','promptSheet','scanSheet','tocSheet','sortSheet'].forEach(closeSheet);
+      hideConfirm();
+    }
+  });
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function(){
+    if (!currentBook) return;
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      if (currentBook.type === 'pdf' && pdfDoc) renderPdfPage(pdfPageNum);
+      else if (currentBook.type === 'epub' && rendition) {
+        try { rendition.resize(); } catch(e) {}
+      }
+    }, 200);
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if (!currentBook) return;
+    if (document.hidden) {
+      finalizeCurrentSession();
+      stopSessionTimer();
+      if (ttsState.isSpeaking && !ttsState.isPaused) {
+        try { window.speechSynthesis.pause(); ttsState.isPaused = true; updateTTSButton(); } catch(e) {}
+      }
+    } else {
+      if (!currentBook.sessionStart) currentBook.sessionStart = Date.now();
+      startSessionTimer();
+    }
+  });
+
+  window.addEventListener('beforeunload', function(){ finalizeCurrentSession(); });
+
+  initPullToScan();
+  initBackButton();
+}
+
+function init() {
+  loadState();
+  recoverAbandonedSessions();
+  applyTheme();
+  renderLibrary();
+  bindEvents();
+  initTTS();
+  if (state.activeView === 'stats') switchView('stats');
+  else switchView('library');
+  openDB().catch(function(e){
+    console.warn('IndexedDB failed', e);
+    showToast('Không mở được cơ sở dữ liệu', 3000);
+  });
+  loadLibraries();
+}
+
+async function loadLibraries() {
+  showStatus('Đang tải thư viện đọc sách...', false);
+  var failed = false;
+  try { if (!window.JSZip) await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'); }
+  catch(e) { console.warn('JSZip failed', e); }
+  try { if (!window.ePub) await loadScript('https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js'); }
+  catch(e) { console.warn('epub.js failed', e); failed = true; }
+  try {
+    if (!window.pdfjsLib) await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    }
+  } catch(e) { console.warn('pdf.js failed', e); failed = true; }
+  libsReady = true;
+  if (failed && !window.ePub && !window.pdfjsLib) {
+    showStatus('Không tải được thư viện đọc sách. Kiểm tra kết nối mạng và tải lại trang.', true);
+  } else {
+    hideStatus();
+  }
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(function (reg) {
+        console.log('[PWA] Service Worker registered:', reg.scope);
+      })
+      .catch(function (err) {
+        console.warn('[PWA] SW registration failed:', err);
+      });
+  });
+}
+</script>
+
+</body>
+</html>
